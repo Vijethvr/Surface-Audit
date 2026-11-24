@@ -217,6 +217,9 @@ try {
   assert.equal(newFinding.response.status,201,JSON.stringify(newFinding.body));
   const findingId=newFinding.body.finding.id;
   const root="/api/audits/"+encodeURIComponent(engagementId)+"/findings/"+encodeURIComponent(findingId);
+  const blockedCompletion=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({status:"Completed"})});
+  assert.equal(blockedCompletion.response.status,409);
+  assert.ok(blockedCompletion.body.blockers.some(reason=>reason.includes("Finding")));
   const closeEarly=await request(root,{method:"PATCH",body:JSON.stringify({status:"CLOSED"})});
   assert.equal(closeEarly.response.status,409);
   const actionCreated=await request(root+"/actions",{method:"POST",body:JSON.stringify({
@@ -234,6 +237,22 @@ try {
   assert.equal(actionUpdated.body.action.status,"VERIFIED");
   const closed=await request(root,{method:"PATCH",body:JSON.stringify({status:"CLOSED"})});
   assert.equal(closed.response.status,200,JSON.stringify(closed.body));
+  const draft=await request("/api/audits/"+encodeURIComponent(engagementId)+"/report");
+  assert.equal(draft.response.status,200,JSON.stringify(draft.body));
+  assert.equal(draft.body.report.readiness.ready,true,JSON.stringify(draft.body.report.readiness));
+  assert.equal(draft.body.report.reportStatus,"UNAPPROVED DRAFT — NOT A COMPLIANCE CERTIFICATE");
+  assert.equal(draft.body.report.requirements[0].assessment,"Conforms");
+  assert.equal(draft.body.report.requirements[0].evidenceReferences[0].reference,"CERT-"+unique);
+  assert.equal(draft.body.report.requirements[0].findings[0].actions[0].verifiedBy,"Second reviewer");
+  const invalidSimultaneous=await request("/api/audits/"+encodeURIComponent(engagementId),{
+    method:"PATCH",body:JSON.stringify({status:"Completed",record:custom})
+  });
+  assert.equal(invalidSimultaneous.response.status,409);
+  const completion=await request("/api/audits/"+encodeURIComponent(engagementId),{
+    method:"PATCH",body:JSON.stringify({status:"Completed"})
+  });
+  assert.equal(completion.response.status,200,JSON.stringify(completion.body));
+  assert.equal((await request("/api/audits")).body.audits.find(a=>a.id===engagementId).status,"Completed");
   const cannotChangeClosed=await request(actionPath,{method:"PATCH",body:JSON.stringify({status:"OPEN"})});
   assert.equal(cannotChangeClosed.response.status,409);
   const listedFindings=await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings");
@@ -253,6 +272,7 @@ try {
   assert.equal((await request("/api/projects")).response.status,401);
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings")).response.status,401);
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/evidence")).response.status,401);
+  assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/report")).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
   child.kill("SIGTERM");
