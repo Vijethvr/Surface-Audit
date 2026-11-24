@@ -33,8 +33,8 @@ function serialize(a: {
   };
 }
 
-export async function GET() {
-  const denied = requireLocalPrototype(); if (denied) return denied;
+export async function GET(request:Request) {
+  const denied = requireLocalPrototype(request); if (denied) return denied;
   try {
     const rows = await prisma.audit.findMany({
       include:{client:true,record:true},
@@ -47,7 +47,7 @@ export async function GET() {
 }
 
 export async function POST(request:Request) {
-  const denied = requireLocalPrototype(); if (denied) return denied;
+  const denied = requireLocalPrototype(request); if (denied) return denied;
   let payload:unknown;
   try {payload=await request.json();} catch {return NextResponse.json({error:"Invalid JSON body"},{status:400});}
   const parsed=createInput.safeParse(payload);
@@ -55,7 +55,7 @@ export async function POST(request:Request) {
   try{
     const {title,client,type}=parsed.data;
     const row=await prisma.audit.create({
-      data:{title,type,client:{connectOrCreate:{where:{name:client},create:{name:client}}}},
+      data:{title,type,client:{connectOrCreate:{where:{name:client},create:{name:client}}},events:{create:{action:"AUDIT_CREATED",actor:process.env.SURFACE_AUDIT_ADMIN_USERNAME!,details:{source:"local-ui"}}}},
       include:{client:true,record:true}
     });
     return NextResponse.json({audit:serialize(row)},{status:201});

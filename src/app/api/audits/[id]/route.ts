@@ -21,7 +21,7 @@ const update=z.object({status:status.optional(),record:record.optional()}).refin
 const dbStatus={"Scheduled":"SCHEDULED","In progress":"IN_PROGRESS","In review":"IN_REVIEW","Completed":"COMPLETED"} as const;
 
 export async function GET(_request:Request,context:{params:Promise<{id:string}>}) {
-  const denied=requireLocalPrototype();if(denied)return denied;
+  const denied=requireLocalPrototype(_request);if(denied)return denied;
   const {id}=await context.params;
   try {
     const audit=await prisma.audit.findUnique({where:{id},include:{record:true}});
@@ -31,7 +31,7 @@ export async function GET(_request:Request,context:{params:Promise<{id:string}>}
 }
 
 export async function PATCH(request:Request,context:{params:Promise<{id:string}>}) {
-  const denied=requireLocalPrototype();if(denied)return denied;
+  const denied=requireLocalPrototype(request);if(denied)return denied;
   const {id}=await context.params;
   let payload:unknown;
   try{payload=await request.json();}catch{return NextResponse.json({error:"Invalid JSON body"},{status:400});}
@@ -45,6 +45,7 @@ export async function PATCH(request:Request,context:{params:Promise<{id:string}>
       if(parsed.data.record)await tx.auditRecord.upsert({
         where:{auditId:id},create:{auditId:id,content:parsed.data.record},update:{content:parsed.data.record}
       });
+      await tx.auditEvent.create({data:{auditId:id,actor:process.env.SURFACE_AUDIT_ADMIN_USERNAME!,action:"AUDIT_UPDATED",details:{status:parsed.data.status??null,recordUpdated:Boolean(parsed.data.record)}}});
     });
     return NextResponse.json({ok:true});
   }catch{return NextResponse.json({error:"Unable to save audit record."},{status:500});}

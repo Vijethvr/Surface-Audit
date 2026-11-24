@@ -24,6 +24,7 @@ model Audit {
   clientId   String
   client     Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
   record     AuditRecord?
+  events     AuditEvent[]
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -45,4 +46,16 @@ model AuditRecord {
   // JSON is temporary v0.3 storage. Normalized requirements and evidence follow in v0.4.
   content   Json
   updatedAt DateTime @updatedAt
+}
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  auditId   String
+  audit     Audit    @relation(fields: [auditId],references: [id],onDelete: Restrict)
+  actor     String
+  action    String
+  details   Json
+  createdAt DateTime @default(now())
+
+  @@index([auditId,createdAt])
 }
