@@ -258,8 +258,8 @@ try {
   const listedFindings=await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings");
   assert.equal(listedFindings.body.findings[0].actions[0].verifiedBy,"Second reviewer");
   const historyV7=await request("/api/audits/"+encodeURIComponent(engagementId)+"/events");
-  assert.deepEqual(historyV7.body.events.map(e=>e.action).slice(-5),[
-    "EVIDENCE_REFERENCE_ADDED","FINDING_CREATED","CAPA_CREATED","CAPA_STATUS_CHANGED","FINDING_STATUS_CHANGED"
+  assert.deepEqual(historyV7.body.events.map(e=>e.action).slice(-6),[
+    "EVIDENCE_REFERENCE_ADDED","FINDING_CREATED","CAPA_CREATED","CAPA_STATUS_CHANGED","FINDING_STATUS_CHANGED","AUDIT_UPDATED"
   ]);
 
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
