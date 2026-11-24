@@ -118,3 +118,13 @@ Only requirement codes belonging to the audit's frozen template snapshot (or the
 To add the models to a disposable local development database, generate the Prisma client and run `npm run db:migrate -- --name findings_capa_evidence`. PostgreSQL CI tests use an isolated temporary database.
 
 **Not production-ready:** All records are local-development prototypes. Evidence references are plain strings, not stored or authenticated documents; audit-event rows are not tamper-evident, and identity is a single-operator development login. There are no independent reviewer permissions, approved verification signatures, or validated ISO conformance decisions. Do not enter confidential customer records.
+
+## v0.8 — Closure readiness and draft reporting
+
+A new **Reporting & closure readiness** panel inside database-backed audit workspaces calls the authenticated `/api/audits/:id/report` endpoint and lists missing checklist assessments, missing reviewer/summary information, nonconformities without structured findings, and findings with outstanding corrective actions. Each assessed requirement must also contain an observation or evidence reference.
+
+The status transition to **Completed** is rejected with HTTP 409 and explicit blockers until the configured checks pass. Save checklist changes before attempting completion; combining a new assessment with a completion request is intentionally rejected.
+
+The new printable `/reports/:id` view provides the saved assessment, frozen template revision, linked equipment, evidence references, findings, actions and a draft readiness summary. The browser's **Print / Save as PDF** feature can create an *unapproved development draft*. The app itself does **not** produce a controlled PDF, digitally signed report, or independently verified compliance certificate.
+
+**Limitations:** Readiness checks validate data completeness, not quality, ISO conformity, traceability or independent approval. Audit events are ordinary mutable database rows; the report is regenerated from current database contents and is not a versioned signed snapshot. Concurrent edits, role separation, formal approval signatures, actual evidence verification, production migrations and customer-data protections remain out of scope. Do not deploy or enter sensitive client records.
