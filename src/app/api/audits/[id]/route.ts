@@ -1,0 +1,51 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/db";
+import { requireLocalPrototype } from "@/lib/dev-api";
+
+export const runtime="nodejs";
+export const dynamic="force-dynamic";
+
+const status=z.enum(["Scheduled","In progress","In review","Completed"]);
+const answer=z.enum(["Not assessed","Conforms","Nonconformity","Not applicable"]);
+const record=z.object({
+  answers:z.record(z.string(),z.object({
+    answer,
+    comment:z.string().max(4000),
+    reference:z.string().max(500)
+  })).refine(obj=>Object.keys(obj).length<=100),
+  summary:z.string().max(12000),
+  reviewer:z.string().max(160)
+});
+const update=z.object({status:status.optional(),record:record.optional()}).refine(x=>x.status!==undefined||x.record!==undefined);
+const dbStatus={"Scheduled":"SCHEDULED","In progress":"IN_PROGRESS","In review":"IN_REVIEW","Completed":"COMPLETED"} as const;
+
+export async function GET(_request:Request,context:{params:Promise<{id:string}>}) {
+  const denied=requireLocalPrototype();if(denied)return denied;
+  const {id}=await context.params;
+  try {
+    const audit=await prisma.audit.findUnique({where:{id},include:{record:true}});
+    if(!audit)return NextResponse.json({error:"Audit not found"},{status:404});
+    return NextResponse.json({record:audit.record?.content??{answers:{},summary:"",reviewer:""}},{headers:{"Cache-Control":"no-store"}});
+  }catch{return NextResponse.json({error:"Unable to load audit record."},{status:503});}
+}
+
+export async function PATCH(request:Request,context:{params:Promise<{id:string}>}) {
+  const denied=requireLocalPrototype();if(denied)return denied;
+  const {id}=await context.params;
+  let payload:unknown;
+  try{payload=await request.json();}catch{return NextResponse.json({error:"Invalid JSON body"},{status:400});}
+  const parsed=update.safeParse(payload);
+  if(!parsed.success)return NextResponse.json({error:"Invalid update",issues:parsed.error.flatten()},{status:400});
+  try{
+    const exists=await prisma.audit.findUnique({where:{id},select:{id:true}});
+    if(!exists)return NextResponse.json({error:"Audit not found"},{status:404});
+    await prisma.$transaction(async tx=>{
+      if(parsed.data.status)await tx.audit.update({where:{id},data:{status:dbStatus[parsed.data.status]}});
+      if(parsed.data.record)await tx.auditRecord.upsert({
+        where:{auditId:id},create:{auditId:id,content:parsed.data.record},update:{content:parsed.data.record}
+      });
+    });
+    return NextResponse.json({ok:true});
+  }catch{return NextResponse.json({error:"Unable to save audit record."},{status:500});}
+}
