@@ -13,6 +13,7 @@ model Client {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   audits    Audit[]
+  projects  Project[]
 }
 
 model Audit {
@@ -58,4 +59,40 @@ model AuditEvent {
   createdAt DateTime @default(now())
 
   @@index([auditId,createdAt])
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  reference String?
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clientId, name])
+  @@index([clientId])
+}
+
+model Equipment {
+  id                   String   @id @default(cuid())
+  identifier           String   @unique
+  name                 String
+  instrumentType       String
+  manufacturer         String?
+  calibrationReference String?
+  calibrationDue       DateTime?
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model AuditTemplate {
+  id          String   @id @default(cuid())
+  title       String   @unique
+  description String?
+  revision    String   @default("1.0")
+  criteria    Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

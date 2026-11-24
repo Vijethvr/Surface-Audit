@@ -120,10 +120,44 @@ try {
   });
   assert.equal(invalid.response.status, 400);
 
+  // v0.5 consulting registries: protected read/write operations.
+  const createdClient=await request("/api/clients",{method:"POST",body:JSON.stringify({name:"Registry Client "+unique})});
+  assert.equal(createdClient.response.status,201,JSON.stringify(createdClient.body));
+  const clientId=createdClient.body.client.id;
+  const clientList=await request("/api/clients");
+  assert.ok(clientList.body.clients.some(item=>item.id===clientId));
+  const duplicateClient=await request("/api/clients",{method:"POST",body:JSON.stringify({name:"Registry Client "+unique})});
+  assert.equal(duplicateClient.response.status,409);
+
+  const project=await request("/api/projects",{method:"POST",body:JSON.stringify({clientId,name:"Metrology assurance "+unique,reference:"P-100"})});
+  assert.equal(project.response.status,201,JSON.stringify(project.body));
+  assert.equal(project.body.project.client.name,"Registry Client "+unique);
+  const projects=await request("/api/projects");
+  assert.ok(projects.body.projects.some(row=>row.id===project.body.project.id));
+  const badProject=await request("/api/projects",{method:"POST",body:JSON.stringify({clientId:"bad-id",name:"Invalid project"})});
+  assert.equal(badProject.response.status,400);
+
+  const instrument=await request("/api/equipment",{method:"POST",body:JSON.stringify({identifier:"CI-"+unique,name:"Reference profilometer",instrumentType:"Stylus profilometer",calibrationReference:"CERT-01",calibrationDue:"2027-06-01"})});
+  assert.equal(instrument.response.status,201,JSON.stringify(instrument.body));
+  assert.ok((await request("/api/equipment")).body.equipment.some(row=>row.id===instrument.body.equipment.id));
+  const duplicateInstrument=await request("/api/equipment",{method:"POST",body:JSON.stringify({identifier:"CI-"+unique,name:"Reference profilometer",instrumentType:"Stylus profilometer"})});
+  assert.equal(duplicateInstrument.response.status,409);
+
+  const template=await request("/api/templates",{method:"POST",body:JSON.stringify({title:"CI measurement assurance "+unique,description:"Temporary test template",revision:"1.0",criteria:[{code:"REQ-01",text:"Instrument verification evidence reviewed"}]})});
+  assert.equal(template.response.status,201,JSON.stringify(template.body));
+  const templates=await request("/api/templates");
+  assert.ok(templates.body.templates.some(row=>row.id===template.body.template.id));
+  const noCriteria=await request("/api/templates",{method:"POST",body:JSON.stringify({title:"Invalid",criteria:[]})});
+  assert.equal(noCriteria.response.status,400);
+
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
   assert.equal(logout.response.status,200);
   sessionCookie="";
   assert.equal((await request("/api/audits")).response.status,401);
+  assert.equal((await request("/api/clients")).response.status,401);
+  assert.equal((await request("/api/equipment")).response.status,401);
+  assert.equal((await request("/api/templates")).response.status,401);
+  assert.equal((await request("/api/projects")).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
   child.kill("SIGTERM");
