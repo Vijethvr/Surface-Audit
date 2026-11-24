@@ -26,11 +26,19 @@ model Audit {
   client     Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
   record     AuditRecord?
   events     AuditEvent[]
+  projectId  String?
+  project    Project?      @relation(fields: [projectId],references: [id],onDelete: Restrict)
+  templateId String?
+  template   AuditTemplate? @relation(fields: [templateId],references: [id],onDelete: Restrict)
+  templateSnapshot Json?
+  equipmentLinks AuditEquipment[]
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
   @@index([status, updatedAt])
   @@index([clientId])
+  @@index([projectId])
+  @@index([templateId])
 }
 
 enum AuditStatus {
@@ -69,6 +77,7 @@ model Project {
   client    Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  audits    Audit[]
 
   @@unique([clientId, name])
   @@index([clientId])
@@ -85,6 +94,7 @@ model Equipment {
   notes                String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
+  auditLinks           AuditEquipment[]
 }
 
 model AuditTemplate {
@@ -93,6 +103,18 @@ model AuditTemplate {
   description String?
   revision    String   @default("1.0")
   criteria    Json
+  audits      Audit[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model AuditEquipment {
+  auditId     String
+  equipmentId String
+  audit       Audit     @relation(fields: [auditId],references: [id],onDelete: Cascade)
+  equipment   Equipment @relation(fields: [equipmentId],references: [id],onDelete: Restrict)
+  assignedAt  DateTime  @default(now())
+
+  @@id([auditId,equipmentId])
+  @@index([equipmentId])
 }
