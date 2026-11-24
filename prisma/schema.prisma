@@ -32,6 +32,8 @@ model Audit {
   template   AuditTemplate? @relation(fields: [templateId],references: [id],onDelete: Restrict)
   templateSnapshot Json?
   equipmentLinks AuditEquipment[]
+  findings   Finding[]
+  evidenceReferences EvidenceReference[]
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -117,4 +119,68 @@ model AuditEquipment {
 
   @@id([auditId,equipmentId])
   @@index([equipmentId])
+}
+
+enum FindingSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+enum FindingStatus {
+  OPEN
+  ACTION_IN_PROGRESS
+  READY_FOR_VERIFICATION
+  CLOSED
+}
+enum ActionStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  VERIFIED
+}
+
+model Finding {
+  id              String          @id @default(cuid())
+  auditId         String
+  audit           Audit           @relation(fields:[auditId], references:[id], onDelete:Restrict)
+  requirementCode String
+  title           String
+  description     String
+  severity        FindingSeverity @default(MEDIUM)
+  status          FindingStatus   @default(OPEN)
+  actions         CorrectiveAction[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([auditId,status])
+}
+
+model CorrectiveAction {
+  id             String       @id @default(cuid())
+  findingId      String
+  finding        Finding      @relation(fields:[findingId], references:[id], onDelete:Restrict)
+  description    String
+  owner          String
+  dueDate        DateTime?
+  status         ActionStatus @default(OPEN)
+  closureEvidence String?
+  verifiedBy     String?
+  verifiedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([findingId,status])
+}
+
+model EvidenceReference {
+  id              String   @id @default(cuid())
+  auditId         String
+  audit           Audit    @relation(fields:[auditId], references:[id], onDelete:Restrict)
+  requirementCode String
+  reference       String
+  description     String?
+  createdAt       DateTime @default(now())
+
+  @@index([auditId,requirementCode])
 }

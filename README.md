@@ -99,3 +99,22 @@ The audit workspace can assign instruments from the equipment register. Assignme
 Run `npm run db:generate` and then `npm run db:migrate -- --name audit_engagement_links` for a local disposable PostgreSQL development database. The isolated GitHub integration test uses `prisma db push`; production migrations, template change history, approvals, finding/CAPA ownership, and secure document handling remain future work.
 
 This milestone is **not production-ready** and should not contain real or confidential customer records.
+
+## v0.7 — Findings, CAPA and evidence-reference management
+
+The database-backed audit workspace includes a **Findings, CAPA & evidence references** panel. It allows the local operator to:
+
+- Create findings linked to specific assessment requirement codes, with descriptions and severity.
+- Assign corrective actions to open findings with an owner, due date and description.
+- Track action status and record a closure evidence reference and verifier identifier.
+- Move findings through open, in-progress, ready-for-verification and closed stages.
+- Register separate evidence **references** against a requirement, without uploading files.
+- Track creation and changes with existing development-stage audit events.
+
+**Closure gate:** At least one corrective action must be present, and every action must be marked verified before a finding can be closed. An action cannot be verified without a closure evidence reference and verifier identifier. This validates required fields, **not** the real identity of the verifier or the underlying evidence.
+
+Only requirement codes belonging to the audit's frozen template snapshot (or the legacy eight-item checklist) are accepted.
+
+To add the models to a disposable local development database, generate the Prisma client and run `npm run db:migrate -- --name findings_capa_evidence`. PostgreSQL CI tests use an isolated temporary database.
+
+**Not production-ready:** All records are local-development prototypes. Evidence references are plain strings, not stored or authenticated documents; audit-event rows are not tamper-evident, and identity is a single-operator development login. There are no independent reviewer permissions, approved verification signatures, or validated ISO conformance decisions. Do not enter confidential customer records.

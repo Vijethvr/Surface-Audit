@@ -197,6 +197,52 @@ try {
   const historyV6=await request("/api/audits/"+encodeURIComponent(engagementId)+"/events");
   assert.deepEqual(historyV6.body.events.map(e=>e.action),["AUDIT_CREATED","AUDIT_UPDATED","EQUIPMENT_ASSIGNED"]);
 
+  // v0.7: structured evidence, findings, corrective action and gated closure.
+  const ev=await request("/api/audits/"+encodeURIComponent(engagementId)+"/evidence",{method:"POST",body:JSON.stringify({
+    requirementCode:"REQ-01",reference:"CERT-"+unique,description:"Calibration reference"
+  })});
+  assert.equal(ev.response.status,201,JSON.stringify(ev.body));
+  assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/evidence")).body.evidence[0].reference,"CERT-"+unique);
+  const badEv=await request("/api/audits/"+encodeURIComponent(engagementId)+"/evidence",{method:"POST",body:JSON.stringify({
+    requirementCode:"REQ-99",reference:"INVALID"
+  })});
+  assert.equal(badEv.response.status,400);
+  const badFinding=await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings",{method:"POST",body:JSON.stringify({
+    requirementCode:"REQ-99",title:"Wrong requirement",description:"Cannot match selected template"
+  })});
+  assert.equal(badFinding.response.status,400);
+  const newFinding=await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings",{method:"POST",body:JSON.stringify({
+    requirementCode:"REQ-01",title:"Missing review evidence",description:"No approved document reference",severity:"HIGH"
+  })});
+  assert.equal(newFinding.response.status,201,JSON.stringify(newFinding.body));
+  const findingId=newFinding.body.finding.id;
+  const root="/api/audits/"+encodeURIComponent(engagementId)+"/findings/"+encodeURIComponent(findingId);
+  const closeEarly=await request(root,{method:"PATCH",body:JSON.stringify({status:"CLOSED"})});
+  assert.equal(closeEarly.response.status,409);
+  const actionCreated=await request(root+"/actions",{method:"POST",body:JSON.stringify({
+    description:"Obtain current certificate",owner:"Metrology reviewer",dueDate:"2027-01-30"
+  })});
+  assert.equal(actionCreated.response.status,201,JSON.stringify(actionCreated.body));
+  const actionId=actionCreated.body.action.id;
+  const actionPath=root+"/actions/"+encodeURIComponent(actionId);
+  const incompleteVerification=await request(actionPath,{method:"PATCH",body:JSON.stringify({status:"VERIFIED"})});
+  assert.equal(incompleteVerification.response.status,400);
+  const actionUpdated=await request(actionPath,{method:"PATCH",body:JSON.stringify({
+    status:"VERIFIED",closureEvidence:"CERT-VERIFIED-"+unique,verifiedBy:"Second reviewer"
+  })});
+  assert.equal(actionUpdated.response.status,200,JSON.stringify(actionUpdated.body));
+  assert.equal(actionUpdated.body.action.status,"VERIFIED");
+  const closed=await request(root,{method:"PATCH",body:JSON.stringify({status:"CLOSED"})});
+  assert.equal(closed.response.status,200,JSON.stringify(closed.body));
+  const cannotChangeClosed=await request(actionPath,{method:"PATCH",body:JSON.stringify({status:"OPEN"})});
+  assert.equal(cannotChangeClosed.response.status,409);
+  const listedFindings=await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings");
+  assert.equal(listedFindings.body.findings[0].actions[0].verifiedBy,"Second reviewer");
+  const historyV7=await request("/api/audits/"+encodeURIComponent(engagementId)+"/events");
+  assert.deepEqual(historyV7.body.events.map(e=>e.action).slice(-5),[
+    "EVIDENCE_REFERENCE_ADDED","FINDING_CREATED","CAPA_CREATED","CAPA_STATUS_CHANGED","FINDING_STATUS_CHANGED"
+  ]);
+
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
   assert.equal(logout.response.status,200);
   sessionCookie="";
@@ -205,6 +251,8 @@ try {
   assert.equal((await request("/api/equipment")).response.status,401);
   assert.equal((await request("/api/templates")).response.status,401);
   assert.equal((await request("/api/projects")).response.status,401);
+  assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings")).response.status,401);
+  assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/evidence")).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
   child.kill("SIGTERM");
