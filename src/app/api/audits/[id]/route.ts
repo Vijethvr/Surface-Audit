@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireLocalPrototype } from "@/lib/dev-api";
+import { buildAuditReport } from "@/lib/audit-report";
 
 export const runtime="nodejs";
 export const dynamic="force-dynamic";
@@ -44,6 +45,14 @@ export async function PATCH(request:Request,context:{params:Promise<{id:string}>
       const snapshot=exists.templateSnapshot as {criteria?:Array<{code:string}>};
       const allowed=new Set((snapshot.criteria??[]).map(item=>item.code));
       if(Object.keys(parsed.data.record.answers).some(code=>!allowed.has(code)))return NextResponse.json({error:"Assessment references are not in the audit template snapshot"},{status:400});
+    }
+    // Prevent bypassing the closure gate by supplying a new unsaved assessment
+    // and a completed status in the same request.
+    if(parsed.data.status==="Completed"){
+      if(parsed.data.record)return NextResponse.json({error:"Save the assessment separately before requesting completion"},{status:409});
+      const current=await buildAuditReport(id);
+      if(!current)return NextResponse.json({error:"Audit not found"},{status:404});
+      if(!current.readiness.ready)return NextResponse.json({error:"Audit not ready for completion",blockers:current.readiness.blockers},{status:409});
     }
     await prisma.$transaction(async tx=>{
       if(parsed.data.status)await tx.audit.update({where:{id},data:{status:dbStatus[parsed.data.status]}});
