@@ -9,7 +9,7 @@ export const dynamic="force-dynamic";
 const status=z.enum(["Scheduled","In progress","In review","Completed"]);
 const answer=z.enum(["Not assessed","Conforms","Nonconformity","Not applicable"]);
 const record=z.object({
-  answers:z.record(z.object({
+  answers:z.record(z.string(),z.object({
     answer,
     comment:z.string().max(4000),
     reference:z.string().max(500)
