@@ -46,6 +46,15 @@ export function validMutationOrigin(request:Request){
   const origin=request.headers.get("origin");
   // Browser state-changing requests must have a same-origin Origin header.
   if(!origin)return false;
-  try{return new URL(origin).origin===new URL(request.url).origin}catch{return false}
+  // Compare the browser Origin to the incoming Host, not Next.js' normalized request URL.
+  // This API is local-development only; reject non-loopback hosts.
+  const host=request.headers.get("host");
+  if(!host)return false;
+  try{
+    const source=new URL(origin);
+    return source.protocol==="http:"
+      && ["127.0.0.1","localhost","[::1]"].includes(source.hostname)
+      && source.host===host;
+  }catch{return false}
 }
 export const sessionMaxAge=lifespanSeconds;
