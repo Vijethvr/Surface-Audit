@@ -8,6 +8,7 @@ import { setTimeout as delay } from "node:timers/promises";
 const port = 3017;
 const base = `http://127.0.0.1:${port}`;
 const timeoutMs = 90000;
+let sessionCookie = "";
 
 if (process.env.CI !== "true" || process.env.SURFACE_AUDIT_ENABLE_LOCAL_API !== "true") {
   throw new Error("Refusing integration test outside an explicitly enabled CI environment.");
@@ -24,7 +25,7 @@ async function request(path, options = {}) {
   const response = await fetch(base + path, {
     ...options,
     signal: AbortSignal.timeout(20000),
-    headers: { "Content-Type": "application/json", ...options.headers },
+    headers: { "Content-Type": "application/json", ...(sessionCookie?{"Cookie":sessionCookie}:{}), ...(["POST","PATCH","PUT","DELETE"].includes(options.method)?{"Origin":base}:{}), ...options.headers },
   });
   const body = await response.json();
   return { response, body };
@@ -49,6 +50,16 @@ try {
   const health = await request("/api/health");
   assert.equal(health.body.storage, "postgres-prototype");
 
+  const denied=await request("/api/audits");
+  assert.equal(denied.response.status,401,"Unauthenticated audit access should be denied");
+  const badLogin=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username:"local-admin",password:"wrong"})});
+  assert.equal(badLogin.response.status,401);
+  const login=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username:process.env.SURFACE_AUDIT_ADMIN_USERNAME,password:"CI-password-only-not-for-real-users"})});
+  assert.equal(login.response.status,200,JSON.stringify(login.body));
+  sessionCookie=login.response.headers.get("set-cookie")?.split(";")[0]??"";
+  assert.ok(sessionCookie.startsWith("surface_audit_session="));
+  const crossSite=await request("/api/audits",{method:"POST",headers:{Origin:"https://attacker.example"},body:JSON.stringify({title:"Disallowed",client:"Disallowed"})});
+  assert.equal(crossSite.response.status,403);
   const unique = `CI-${Date.now()}`;
   const created = await request("/api/audits", {
     method: "POST",
@@ -99,13 +110,21 @@ try {
   assert.equal(audit.status, "In review");
   assert.equal(audit.progress, 25);
 
+  const history=await request(`/api/audits/${encodeURIComponent(auditId)}/events`);
+  assert.equal(history.response.status,200);
+  assert.deepEqual(history.body.events.map(e=>e.action),["AUDIT_CREATED","AUDIT_UPDATED"]);
+  assert.ok(history.body.events.every(e=>e.actor==="local-admin"));
   const invalid = await request("/api/audits", {
     method: "POST",
     body: JSON.stringify({ title: "", client: "" }),
   });
   assert.equal(invalid.response.status, 400);
 
-  console.log("PASS: PostgreSQL audit creation, listing, update, persistence, and invalid-input rejection.");
+  const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
+  assert.equal(logout.response.status,200);
+  sessionCookie="";
+  assert.equal((await request("/api/audits")).response.status,401);
+  console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
   child.kill("SIGTERM");
   await delay(500);
