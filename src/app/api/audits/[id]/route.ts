@@ -24,9 +24,9 @@ export async function GET(_request:Request,context:{params:Promise<{id:string}>}
   const denied=requireLocalPrototype(_request);if(denied)return denied;
   const {id}=await context.params;
   try {
-    const audit=await prisma.audit.findUnique({where:{id},include:{record:true}});
+    const audit=await prisma.audit.findUnique({where:{id},include:{record:true,project:true,equipmentLinks:{include:{equipment:true}}}});
     if(!audit)return NextResponse.json({error:"Audit not found"},{status:404});
-    return NextResponse.json({record:audit.record?.content??{answers:{},summary:"",reviewer:""}},{headers:{"Cache-Control":"no-store"}});
+    return NextResponse.json({record:audit.record?.content??{answers:{},summary:"",reviewer:""},templateSnapshot:audit.templateSnapshot,project:audit.project?{id:audit.project.id,name:audit.project.name}:null,equipment:audit.equipmentLinks.map(link=>({id:link.equipment.id,identifier:link.equipment.identifier,name:link.equipment.name,calibrationDue:link.equipment.calibrationDue}))},{headers:{"Cache-Control":"no-store"}});
   }catch{return NextResponse.json({error:"Unable to load audit record."},{status:503});}
 }
 
@@ -38,8 +38,13 @@ export async function PATCH(request:Request,context:{params:Promise<{id:string}>
   const parsed=update.safeParse(payload);
   if(!parsed.success)return NextResponse.json({error:"Invalid update",issues:parsed.error.flatten()},{status:400});
   try{
-    const exists=await prisma.audit.findUnique({where:{id},select:{id:true}});
+    const exists=await prisma.audit.findUnique({where:{id},select:{id:true,templateSnapshot:true}});
     if(!exists)return NextResponse.json({error:"Audit not found"},{status:404});
+    if(parsed.data.record&&exists.templateSnapshot){
+      const snapshot=exists.templateSnapshot as {criteria?:Array<{code:string}>};
+      const allowed=new Set((snapshot.criteria??[]).map(item=>item.code));
+      if(Object.keys(parsed.data.record.answers).some(code=>!allowed.has(code)))return NextResponse.json({error:"Assessment references are not in the audit template snapshot"},{status:400});
+    }
     await prisma.$transaction(async tx=>{
       if(parsed.data.status)await tx.audit.update({where:{id},data:{status:dbStatus[parsed.data.status]}});
       if(parsed.data.record)await tx.auditRecord.upsert({

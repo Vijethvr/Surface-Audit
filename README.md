@@ -89,3 +89,13 @@ The API endpoints `/api/clients`, `/api/projects`, `/api/equipment`, and `/api/t
 To update a disposable local development database after switching to v0.5, run `npm run db:generate` and `npm run db:migrate -- --name consulting_registry`. Back up important local data before running migrations. The GitHub CI integration test uses an isolated temporary PostgreSQL instance and `prisma db push`.
 
 **Security boundary:** Do not enter customer-identifiable or confidential records. Single-operator local authentication is not production authorization. A future release must connect controlled template revisions, equipment evidence and approvals to audit engagements.
+
+## v0.6 — Controlled audit execution foundation
+
+When creating an audit in **local PostgreSQL mode**, choose an optional client project and an optional audit-template draft. The API checks that the project belongs to the named client and **copies the template's requirements and revision into the audit**. Once saved, edits to a template draft do not change that audit's criteria. The audit workspace displays its selected project, frozen template revision, and corresponding checklist. Previously created audits retain the original demonstration checklist.
+
+The audit workspace can assign instruments from the equipment register. Assignments and checklist revisions create audit activity events. Evidence references remain plain text per requirement; they are not stored or verified as controlled documents. Equipment assignments do not assert traceability or calibration validity.
+
+Run `npm run db:generate` and then `npm run db:migrate -- --name audit_engagement_links` for a local disposable PostgreSQL development database. The isolated GitHub integration test uses `prisma db push`; production migrations, template change history, approvals, finding/CAPA ownership, and secure document handling remain future work.
+
+This milestone is **not production-ready** and should not contain real or confidential customer records.
