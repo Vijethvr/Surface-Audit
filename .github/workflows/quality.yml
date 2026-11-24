@@ -41,3 +41,40 @@ jobs:
         run: npm run lint
       - name: Production build
         run: npm run build
+
+  postgres-integration:
+    name: PostgreSQL persistence smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: surface_audit_ci
+          POSTGRES_USER: surfaceaudit_ci
+          POSTGRES_PASSWORD: ci_only_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U surfaceaudit_ci -d surface_audit_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql://surfaceaudit_ci:ci_only_password@127.0.0.1:5432/surface_audit_ci?schema=public
+      SURFACE_AUDIT_ENABLE_LOCAL_API: "true"
+      NEXT_PUBLIC_SURFACE_AUDIT_STORAGE_MODE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-fund
+      - name: Generate Prisma Client
+        run: npm run db:generate
+      - name: Create isolated test schema
+        run: npx prisma db push --skip-generate
+      - name: Validate audit persistence over HTTP
+        run: node scripts/smoke-db.mjs
