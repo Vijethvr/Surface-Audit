@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  audits    Audit[]
+  projects  Project[]
+}
+
+model Audit {
+  id         String       @id @default(cuid())
+  title      String
+  type       String       @default("Measurement assurance")
+  status     AuditStatus  @default(SCHEDULED)
+  targetDate DateTime?
+  clientId   String
+  client     Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  record     AuditRecord?
+  events     AuditEvent[]
+  projectId  String?
+  project    Project?      @relation(fields: [projectId],references: [id],onDelete: Restrict)
+  templateId String?
+  template   AuditTemplate? @relation(fields: [templateId],references: [id],onDelete: Restrict)
+  templateSnapshot Json?
+  equipmentLinks AuditEquipment[]
+  findings   Finding[]
+  evidenceReferences EvidenceReference[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([status, updatedAt])
+  @@index([clientId])
+  @@index([projectId])
+  @@index([templateId])
+}
+
+enum AuditStatus {
+  SCHEDULED
+  IN_PROGRESS
+  IN_REVIEW
+  COMPLETED
+}
+
+model AuditRecord {
+  id        String   @id @default(cuid())
+  auditId   String   @unique
+  audit     Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  // JSON is temporary v0.3 storage. Normalized requirements and evidence follow in v0.4.
+  content   Json
+  updatedAt DateTime @updatedAt
+}
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  auditId   String
+  audit     Audit    @relation(fields: [auditId],references: [id],onDelete: Restrict)
+  actor     String
+  action    String
+  details   Json
+  createdAt DateTime @default(now())
+
+  @@index([auditId,createdAt])
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String
+  reference String?
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  audits    Audit[]
+
+  @@unique([clientId, name])
+  @@index([clientId])
+}
+
+model Equipment {
+  id                   String   @id @default(cuid())
+  identifier           String   @unique
+  name                 String
+  instrumentType       String
+  manufacturer         String?
+  calibrationReference String?
+  calibrationDue       DateTime?
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  auditLinks           AuditEquipment[]
+}
+
+model AuditTemplate {
+  id          String   @id @default(cuid())
+  title       String   @unique
+  description String?
+  revision    String   @default("1.0")
+  criteria    Json
+  audits      Audit[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditEquipment {
+  auditId     String
+  equipmentId String
+  audit       Audit     @relation(fields: [auditId],references: [id],onDelete: Cascade)
+  equipment   Equipment @relation(fields: [equipmentId],references: [id],onDelete: Restrict)
+  assignedAt  DateTime  @default(now())
+
+  @@id([auditId,equipmentId])
+  @@index([equipmentId])
+}
+
+enum FindingSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+enum FindingStatus {
+  OPEN
+  ACTION_IN_PROGRESS
+  READY_FOR_VERIFICATION
+  CLOSED
+}
+enum ActionStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  VERIFIED
+}
+
+model Finding {
+  id              String          @id @default(cuid())
+  auditId         String
+  audit           Audit           @relation(fields:[auditId], references:[id], onDelete:Restrict)
+  requirementCode String
+  title           String
+  description     String
+  severity        FindingSeverity @default(MEDIUM)
+  status          FindingStatus   @default(OPEN)
+  actions         CorrectiveAction[]
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([auditId,status])
+}
+
+model CorrectiveAction {
+  id             String       @id @default(cuid())
+  findingId      String
+  finding        Finding      @relation(fields:[findingId], references:[id], onDelete:Restrict)
+  description    String
+  owner          String
+  dueDate        DateTime?
+  status         ActionStatus @default(OPEN)
+  closureEvidence String?
+  verifiedBy     String?
+  verifiedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([findingId,status])
+}
+
+model EvidenceReference {
+  id              String   @id @default(cuid())
+  auditId         String
+  audit           Audit    @relation(fields:[auditId], references:[id], onDelete:Restrict)
+  requirementCode String
+  reference       String
+  description     String?
+  createdAt       DateTime @default(now())
+
+  @@index([auditId,requirementCode])
+}
