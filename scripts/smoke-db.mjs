@@ -150,6 +150,53 @@ try {
   const noCriteria=await request("/api/templates",{method:"POST",body:JSON.stringify({title:"Invalid",criteria:[]})});
   assert.equal(noCriteria.response.status,400);
 
+  // v0.6: project ownership, frozen checklist, instrument associations.
+  const engagement=await request("/api/audits",{method:"POST",body:JSON.stringify({
+    title:"Template-based measurement review "+unique,
+    client:"Registry Client "+unique,
+    projectId:project.body.project.id,
+    templateId:template.body.template.id,
+  })});
+  assert.equal(engagement.response.status,201,JSON.stringify(engagement.body));
+  const engagementId=engagement.body.audit.id;
+  assert.equal(engagement.body.audit.project.id,project.body.project.id);
+  assert.equal(engagement.body.audit.templateSnapshot.revision,"1.0");
+  assert.equal(engagement.body.audit.templateSnapshot.criteria.length,1);
+  const details=await request("/api/audits/"+encodeURIComponent(engagementId));
+  assert.equal(details.response.status,200);
+  assert.equal(details.body.templateSnapshot.title,"CI measurement assurance "+unique);
+  assert.equal(details.body.project.name,"Metrology assurance "+unique);
+  const custom={answers:{"REQ-01":{answer:"Conforms",comment:"Procedure reviewed",reference:"TEST-EVD-1"}},summary:"Test",reviewer:"CI"};
+  const savedCustom=await request("/api/audits/"+encodeURIComponent(engagementId),{
+    method:"PATCH",body:JSON.stringify({record:custom})
+  });
+  assert.equal(savedCustom.response.status,200,JSON.stringify(savedCustom.body));
+  const updatedCustom=(await request("/api/audits")).body.audits.find(a=>a.id===engagementId);
+  assert.equal(updatedCustom.progress,100);
+  const badCustom=await request("/api/audits/"+encodeURIComponent(engagementId),{
+    method:"PATCH",body:JSON.stringify({record:{...custom,answers:{"REQ-99":custom.answers["REQ-01"]}}})
+  });
+  assert.equal(badCustom.response.status,400);
+  const assigned=await request("/api/audits/"+encodeURIComponent(engagementId)+"/equipment",{
+    method:"PUT",body:JSON.stringify({equipmentIds:[instrument.body.equipment.id]})
+  });
+  assert.equal(assigned.response.status,200,JSON.stringify(assigned.body));
+  const reloadedDetail=await request("/api/audits/"+encodeURIComponent(engagementId));
+  assert.equal(reloadedDetail.body.equipment.length,1);
+  assert.equal(reloadedDetail.body.equipment[0].identifier,"CI-"+unique);
+  const badEquip=await request("/api/audits/"+encodeURIComponent(engagementId)+"/equipment",{
+    method:"PUT",body:JSON.stringify({equipmentIds:["bad-id"]})
+  });
+  assert.equal(badEquip.response.status,400);
+  const otherClient=await request("/api/clients",{method:"POST",body:JSON.stringify({name:"Unrelated "+unique})});
+  assert.equal(otherClient.response.status,201);
+  const unrelated=await request("/api/audits",{method:"POST",body:JSON.stringify({
+    title:"Wrong client test",client:"Unrelated "+unique,projectId:project.body.project.id
+  })});
+  assert.equal(unrelated.response.status,409);
+  const historyV6=await request("/api/audits/"+encodeURIComponent(engagementId)+"/events");
+  assert.deepEqual(historyV6.body.events.map(e=>e.action),["AUDIT_CREATED","AUDIT_UPDATED","EQUIPMENT_ASSIGNED"]);
+
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
   assert.equal(logout.response.status,200);
   sessionCookie="";
