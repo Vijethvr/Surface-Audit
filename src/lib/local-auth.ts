@@ -39,7 +39,7 @@ export function getSession(request:Request):{username:string}|null{
   try{
     const obj=JSON.parse(Buffer.from(body,"base64url").toString()) as {sub?:string;exp?:number};
     if(obj.sub!==process.env.SURFACE_AUDIT_ADMIN_USERNAME || typeof obj.exp!=="number" || obj.exp<=Math.floor(Date.now()/1000))return null;
-    return {username:obj.sub};
+    return {username:obj.sub!};
   }catch{return null}
 }
 export function validMutationOrigin(request:Request){
