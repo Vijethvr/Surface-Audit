@@ -35,11 +35,12 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT CONNECT ON DATABASE surface_audit TO surfaceaudit_app;
 GRANT USAGE ON SCHEMA public TO surfaceaudit_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO surfaceaudit_app;
+REVOKE INSERT, UPDATE, DELETE ON TABLE "_prisma_migrations" FROM surfaceaudit_app;
 ```
 
 Adapt the database name if it differs; the SQL above is illustrative. Restrict the network at PostgreSQL's `listen_addresses`, `pg_hba.conf` and firewall as appropriate; never put the app on a public network. Note PostgreSQL privileges granted to `PUBLIC` or through other inherited roles can still broaden access; inspect effective grants rather than only direct grants.
 
-**After future migrations:** as the migration owner, grant DML privileges on any newly created tables to the app role before restarting the app. Review migration SQL and test on a disposable copy first. Do not use a database owner string as `DATABASE_URL` for the running app.
+**After future migrations:** as the migration owner, grant DML privileges on any newly created application tables to the app role, and ensure the app role never receives migration-ledger write permissions before restarting the app. Review migration SQL and test on a disposable copy first. Do not use a database owner string as `DATABASE_URL` for the running app.
 
 ## 4. Run with the restricted account
 
