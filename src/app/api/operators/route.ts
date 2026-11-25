@@ -26,6 +26,14 @@ export async function PATCH(request:Request){
    ...(parsed.data.resetLockout===true?{failedLoginCount:0,lastFailedLoginAt:null,loginLockedUntil:null}:{})
   }});
   if(parsed.data.active===false)await tx.operatorSession.deleteMany({where:{operatorId:operator.id}});
+  if(parsed.data.active!==undefined)await tx.securityEvent.create({data:{
+   eventType:parsed.data.active?"OPERATOR_ENABLED":"OPERATOR_DISABLED",
+   outcome:"SUCCESS",actorUsername:user.username,subjectUsername:operator.username
+  }});
+  if(parsed.data.resetLockout===true)await tx.securityEvent.create({data:{
+   eventType:"LOGIN_LOCKOUT_RESET",outcome:"SUCCESS",
+   actorUsername:user.username,subjectUsername:operator.username
+  }});
  });
  return NextResponse.json({ok:true});
 }
