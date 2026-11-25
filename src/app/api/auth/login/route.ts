@@ -1,3 +1,4 @@
+import {recordSecurityEvent} from "@/lib/security-events";
 import {NextResponse} from "next/server";
 import {prisma} from "@/lib/db";
 import {authConfigured,cookieName,createSession,sessionMaxAge,validMutationOrigin,validLocalRequestHost,verifyPassword} from "@/lib/local-auth";
@@ -30,11 +31,15 @@ export async function POST(request:Request){
     lastFailedLoginAt:now,
     loginLockedUntil:count>=5?new Date(now.getTime()+windowMs):null
    }});
+   await recordSecurityEvent({eventType:count>=5?"LOGIN_LOCKED":"LOGIN_FAILED",outcome:"DENIED",subjectUsername:account.username});
+  }else if(account&&account.active&&locked){
+   await recordSecurityEvent({eventType:"LOGIN_LOCKED",outcome:"DENIED",subjectUsername:account.username});
   }
   return invalid();
  }
  // Successful authentication resets the counter and clears a previously elapsed lockout.
  await prisma.operator.update({where:{id:account.id},data:{failedLoginCount:0,lastFailedLoginAt:null,loginLockedUntil:null}});
+ await recordSecurityEvent({eventType:"LOGIN_SUCCEEDED",outcome:"SUCCESS",actorUsername:account.username});
  const token=await createSession(account.id);
  const response=NextResponse.json({ok:true,username:account.username,role:account.role},{headers:{"Cache-Control":"no-store"}});
  response.cookies.set(cookieName,token,{httpOnly:true,sameSite:"strict",secure:false,path:"/",maxAge:sessionMaxAge});

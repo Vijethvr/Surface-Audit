@@ -38,6 +38,11 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
   if(claimed.count!==1)throw new Error("STALE_AUDIT_REVIEW");
   const saved=await tx.auditReview.create({data:{auditId:id,reviewerId:user.id,reviewerName:user.username,decision:parsed.data.decision,note:parsed.data.note,reportDigest:report?reviewBasisDigest(report):null}});
   await tx.auditEvent.create({data:{auditId:id,actor:user.username,action:parsed.data.decision==="APPROVED"?"REVIEW_APPROVED":"REVIEW_REJECTED",details:{reviewId:saved.id,note:saved.note}}});
+  await tx.securityEvent.create({data:{
+   eventType:parsed.data.decision==="APPROVED"?"REVIEW_APPROVED":"REVIEW_REJECTED",
+   outcome:"SUCCESS",actorUsername:user.username,
+   details:{auditId:id,reviewId:saved.id}
+  }});
   return saved;
  });}catch(error){
   if(error instanceof Error&&error.message==="STALE_AUDIT_REVIEW")return NextResponse.json({error:"Audit changed while review was prepared; reload and approve the latest revision"},{status:409});

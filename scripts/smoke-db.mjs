@@ -59,6 +59,26 @@ try {
   assert.equal(login.response.status,200,JSON.stringify(login.body));
   sessionCookie=login.response.headers.get("set-cookie")?.split(";")[0]??"";
   assert.ok(sessionCookie.startsWith("surface_audit_session="));
+  // v1.9: the live API runs as a DML-only PostgreSQL role, not schema owner.
+  const {PrismaClient:RuntimePrismaClient}=await import("@prisma/client");
+  const runtimeDb=new RuntimePrismaClient();
+  try{
+   const rows=await runtimeDb.$queryRaw`SELECT current_user AS username,
+     has_schema_privilege(current_user,'public','CREATE') AS can_create`;
+   assert.equal(rows[0].username,"surfaceaudit_app_ci");
+   assert.equal(rows[0].can_create,false);
+   await assert.rejects(runtimeDb.$executeRawUnsafe('CREATE TABLE "ci_forbidden_runtime_ddl" (id INTEGER)'),/permission denied|P2010/i);
+   await assert.rejects(runtimeDb.$executeRawUnsafe('DELETE FROM "_prisma_migrations"'),/permission denied|P2010/i);
+  }finally{await runtimeDb.$disconnect()}
+  const loginEvents=await request("/api/security/events");
+  assert.equal(loginEvents.response.status,200);
+  assert.ok(loginEvents.body.events.some(e=>e.eventType==="LOGIN_FAILED"&&e.subjectUsername==="local-admin"));
+  assert.ok(loginEvents.body.events.some(e=>e.eventType==="LOGIN_SUCCEEDED"&&e.actorUsername==="local-admin"));
+  assert.doesNotMatch(JSON.stringify(loginEvents.body),/CI-password-only-not-for-real-users/);
+  const invalidLogType=await request("/api/security/events?type=INVALID");
+  assert.equal(invalidLogType.response.status,400);
+  const oversizedLog=await request("/api/security/events?limit=1000");
+  assert.equal(oversizedLog.response.status,400);
   const crossSite=await request("/api/audits",{method:"POST",headers:{Origin:"https://attacker.example"},body:JSON.stringify({title:"Disallowed",client:"Disallowed"})});
   assert.equal(crossSite.response.status,403);
   // v1.8 local boundary regression: attacker-controlled hosts, CSRF and sessions.
@@ -353,6 +373,7 @@ try {
    return sessionCookie;
   }
   const viewerCookie=await signInAs("ci-viewer");
+  assert.equal((await request("/api/security/events")).response.status,403,"Viewer cannot inspect authentication history");
   const viewerRead=await request(reviewRoot);
   assert.equal(viewerRead.response.status,200);
   const viewerWrite=await request("/api/clients",{method:"POST",body:JSON.stringify({name:"Viewer rejected"})});
@@ -395,6 +416,9 @@ try {
   const reapproved=await request(reviewRoot,{method:"POST",body:JSON.stringify({decision:"APPROVED",note:"Re-reviewed after updated summary was saved in the audit"})});
   assert.equal(reapproved.response.status,201,JSON.stringify(reapproved.body));
   sessionCookie=adminCookie;
+  const reviewEvents=await request("/api/security/events?type=REVIEW_APPROVED");
+  assert.equal(reviewEvents.response.status,200);
+  assert.ok(reviewEvents.body.events.some(e=>e.actorUsername==="ci-reviewer"));
   const adminUsers=await request("/api/operators");
   assert.equal(adminUsers.response.status,200);
   assert.ok(adminUsers.body.operators.some(user=>user.username==="ci-viewer"&&user.role==="VIEWER"));
@@ -420,6 +444,10 @@ try {
   const viewerId=adminUsers.body.operators.find(user=>user.username==="ci-viewer").id;
   const deactivate=await request("/api/operators",{method:"PATCH",body:JSON.stringify({id:viewerId,active:false})});
   assert.equal(deactivate.response.status,200);
+  const adminSecurityLog=await request("/api/security/events");
+  assert.ok(adminSecurityLog.body.events.some(e=>e.eventType==="LOGIN_LOCKED"&&e.subjectUsername==="ci-editor"));
+  assert.ok(adminSecurityLog.body.events.some(e=>e.eventType==="LOGIN_LOCKOUT_RESET"&&e.actorUsername==="local-admin"));
+  assert.ok(adminSecurityLog.body.events.some(e=>e.eventType==="OPERATOR_DISABLED"&&e.subjectUsername==="ci-viewer"));
   sessionCookie=viewerCookie;
   assert.equal((await request(reviewRoot)).response.status,401);
   sessionCookie=adminCookie;
@@ -493,6 +521,10 @@ try {
     await assert.rejects(
       integrityDb.auditReportSnapshot.update({where:{id:snapshotRow.id},data:{sha256:"bad"}}),
       /history is append-only|constraint|P2004/i);
+    const securityRow=await integrityDb.securityEvent.findFirst();
+    assert.ok(securityRow);
+    await assert.rejects(integrityDb.securityEvent.update({where:{id:securityRow.id},data:{outcome:"ALTERED"}}),/history is append-only|constraint|P2004/i);
+    await assert.rejects(integrityDb.securityEvent.delete({where:{id:securityRow.id}}),/history is append-only|constraint|P2004/i);
     const assetRow=await integrityDb.evidenceAsset.findFirst({where:{auditId:engagementId}});
     assert.ok(assetRow);
     await assert.rejects(
@@ -517,6 +549,7 @@ try {
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/dossier")).response.status,401);
   assert.equal((await request(reviewRoot)).response.status,401);
   assert.equal((await request("/api/operators")).response.status,401);
+  assert.equal((await request("/api/security/events")).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
   child.kill("SIGTERM");

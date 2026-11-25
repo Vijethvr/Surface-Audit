@@ -1,6 +1,6 @@
 # SURFACE Audit — Project Handoff for a New Chat
 
-**Status date:** 25 November 2026 (Europe/Stockholm) — v1.8 development branch snapshot.  
+**Status date:** 25 November 2026 (Europe/Stockholm) — v1.9 development branch snapshot.  
 **Canonical repository:** https://github.com/Vijethvr/Surface-Audit  
 **Default branch:** `main`  
 **Purpose:** Long-term continuity between ChatGPT conversations. **Always check live GitHub status and code before acting; this handoff is a dated snapshot, not live state.**
@@ -48,7 +48,7 @@ The demo-browser storage mode exists separately. Database mode is a local-develo
 | v1.3 | Account lockout, content-bound review, versioned migration baseline | #15 |
 | v1.4 | Audit optimistic revisions, concurrent-write coordination, migration inspector | #16 |
 | v1.5 | Local backup and restore drill, append-only database history triggers | #17 |
-| **v1.6** | **Encrypted local recovery package + safe local configuration preflight + continuity document** | **#18, verified present on main at start of v1.7** |\n| **v1.7** | **Offline independently verifiable Ed25519 signed sealed audit dossiers** | **#19, verified present on main at start of v1.8** |\n| **v1.8** | **Public-key trust registry, local security attack tests and deployment threat model** | **New development PR; verify status and final CI before merging** |
+| **v1.6** | **Encrypted local recovery package + safe local configuration preflight + continuity document** | **#18, verified present on main at start of v1.7** |\n| **v1.7** | **Offline independently verifiable Ed25519 signed sealed audit dossiers** | **#19, verified present on main at start of v1.8** |\n| **v1.8** | **Public-key trust registry, local security attack tests and deployment threat model** | **#20 verified on main at start of v1.9** |\n| **v1.9** | **Restricted app database role, security event ledger and administrator console** | **New development PR; verify status and CI before merge** |
 
 As of the start of v1.6, the v1.5 migration file and recovery tool were confirmed on `main`. Verify v1.6 and any later merges afresh.
 
@@ -78,6 +78,16 @@ Current development branch `feat/security-assurance-trust-registry-v1.8` from `m
 `src/lib/local-auth.ts`, `src/lib/dev-api.ts` and login route have additional loopback Host/URL checks. `scripts/smoke-db.mjs` now rejects spoofed hosts, missing/incorrect Origin, and tests cookie attributes alongside existing reviewer/role/session tests. `scripts/test-dossier-signatures.mjs` tests key enrollment, rejection of unknown keys, tampering and revocation. New `SECURITY_DEPLOYMENT_GATE.md` documents threats, mitigations, gaps and production-release blockers.
 
 **Before calling v1.8 complete**: check final two GitHub Actions jobs for the final commit, mark PR ready only after both pass and leave merge to user. Production remains prohibited.
+
+## 5C. v1.9 restricted PostgreSQL runtime and security events
+
+Current development branch: `feat/db-least-privilege-security-events-v1.9` targeting `main`. See **`LOCAL_DEPLOYMENT_RUNBOOK.md`** for a Windows-oriented owner-vs-runtime PostgreSQL role setup. A new `SecurityEvent` model and additive migration provide append-only security events; `src/lib/security-events.ts`, login/logout, operator admin route and review route write allowlisted sign-in, lockout, account and reviewer events. Admin-only `/api/security/events` and an extended `/operators` page display recent safe metadata without credentials or evidence files.
+
+In GitHub Actions the migrator remains the PostgreSQL owner but the HTTP integration test uses a separately provisioned `surfaceaudit_app_ci` role with table DML privileges only, explicitly lacking schema/database creation and role-administration privileges. New `scripts/check-db-privileges.mjs` performs read-only privilege checks. **Actual Windows databases are not changed by this PR.**
+
+Important remaining limits: ordinary app DML remains broad (no client row-level security), owners can bypass all triggers and controls, logs are not immutable against owners, and this does not establish production readiness. Do not use real client data.
+
+**Before calling v1.9 complete:** Verify its PR, final-commit GitHub Actions results, and ensure migration/CI least-privilege assertions, security events and complete backup/restore tests all pass. The user alone merges.
 
 ## 6. Windows developer environment
 
@@ -116,7 +126,7 @@ Check the latest PR, `main` and workflow runs before saying a milestone is compl
 
 ## 9. Prioritized substantial next steps
 
-1. **v1.8 acceptance:** validate trusted-key governance, Host/Origin boundary tests and the new threat model through GitHub Actions, then leave merge approval to the user.
+1. **v1.9 acceptance:** validate restricted PostgreSQL role, credential-safe event register and full CI/security/recovery tests; leave merge approval to the user.
 2. **Security assessment:** automated local attack-boundary tests, database access restrictions, authentication response timing/concurrency, session protections and dependency patch management.
 3. **Backup operations:** secure passphrase management, offsite encrypted archival with restore drill, retention and cleanup policy, recovery objectives and a deployment runbook.
 4. **Independent evidentiary integrity:** v1.7 provides signatures and v1.8 provides an editable local key trust/revocation registry; independently protected registry, certified signing authority, trusted timestamps and key-custody operations remain unimplemented.

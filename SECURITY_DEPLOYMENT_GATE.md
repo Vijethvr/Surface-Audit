@@ -52,3 +52,10 @@ The PostgreSQL HTTP test suite checks unauthorized reads and edits, role separat
 5. Keep the app in local development and use synthetic data until the above gate is satisfied.
 
 **Review rule:** Update this document together with the repository-root `PROJECT_HANDOFF.md` each security milestone. The live code and CI results supersede this text.
+
+## v1.9 additions: database privilege separation and security monitoring
+
+- **New protection:** Owner/migrator PostgreSQL account is separate from a restricted application role in isolated CI. The app role has table DML access but no schema CREATE, database CREATE/ownership, PostgreSQL superuser or role-administration privileges. SQL DDL refusal is exercised in CI. The live user environment must be configured separately using the documented runbook.
+- **New security register:** Append-only `SecurityEvent` model with login failures/lockouts/success, logout, account disable/reactivation, lockout reset and independent approval decisions. The admin-only console excludes password/token/evidence content and limits returned event rows.
+- **Residual risk:** Database owner can alter audit/monitoring data by disabling triggers, and a compromised app role retains table-level UPDATE/DELETE access to ordinary audit and account tables. No row-level security, multi-client tenancy, external immutable log store, production monitoring/alerting, distributed rate limiter, formal network isolation verification or external penetration test is provided.
+- **Next release gate:** threat assessment of all data-changing endpoints and role checks, migration rollback/recovery rehearsal, structured alerting with privacy controls, and production identity design before deployment.

@@ -260,3 +260,17 @@ enum ReviewDecision {
   APPROVED
   REJECTED
 }
+
+
+model SecurityEvent {
+  id              String   @id @default(cuid())
+  eventType       String
+  outcome         String
+  actorUsername   String?
+  subjectUsername String?
+  details         Json     @default("{}")
+  createdAt       DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([eventType, createdAt])
+}
