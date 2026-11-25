@@ -324,3 +324,25 @@ The workflow is available after **Completion** and successful snapshot/evidence 
 **Security meaning:** A valid signature demonstrates that the private key corresponding to the **trusted public key** signed that exact dossier. It does **not** independently validate real-world signer identity, authorization, calibrated measurements, malware safety, or a legally binding review. The embedded signing date is the signer's **untrusted local clock**, not a trusted timestamp. Compromised keys can sign forged content; maintain a public-key trust registry and revocation procedure before real deployment. No independent TSA, HSM, certificate authority, production key rotation or durable external evidence archive is implemented.
 
 **CI:** After real authenticated audit execution and dossier export, isolated PostgreSQL CI generates disposable Ed25519 keys, signs the sealed dossier, verifies with the correct public key, and confirms rejection for the wrong key/passphrase, altered report (including recomputed unsigned hashes), edited evidence bytes, modified signer label, missing attachments, attempts to sign a draft and output overwrite. The real application still runs **local-development only**, with no actual sensitive client data.
+
+
+## v1.8 — Local security assurance and trusted-signing-key registry
+
+This milestone expands automated local attack-boundary checks and introduces an **offline key trust policy** for the v1.7 Ed25519 dossier signatures. Key ownership is not determined from an uploaded dossier; a recipient must independently verify the signer's fingerprint before enrollment.
+
+**Offline trust registry** (commands in Windows Anaconda Prompt):
+
+```bat
+node scripts/trusted-signers.mjs init C:\\surface-audit-keys\\trusted-signers.json
+node scripts/trusted-signers.mjs fingerprint C:\\received\\signing-public.pem
+node scripts/trusted-signers.mjs enroll C:\\surface-audit-keys\\trusted-signers.json C:\\received\\signing-public.pem "Verified reviewer" --confirm=<fingerprint-verified-through-separate-channel>
+node scripts/trusted-signers.mjs verify C:\\surface-audit-keys\\trusted-signers.json C:\\audit-export\\signed-dossier.json
+node scripts/trusted-signers.mjs revoke C:\\surface-audit-keys\\trusted-signers.json <fingerprint> "Key reported compromised"
+node scripts/trusted-signers.mjs list C:\\surface-audit-keys\\trusted-signers.json
+```
+
+**Trust and revocation limits:** A key is accepted only when it matches an enrolled Ed25519 public-key fingerprint and is currently marked `TRUSTED`. Locally revoked keys are refused and cannot be re-enrolled through the CLI. The trust registry is a normal JSON file: anyone who can change that file can rewrite trust history. Store it in a separately controlled location and distribute the fingerprint through an independent channel. The policy treats revoked keys as untrusted **for all signatures**, including historical signatures. There is **no** signed key directory, trusted revocation timestamp, external certificate authority, hardware signing key or independent proof of reviewer identity.
+
+**Local HTTP boundary:** Operator sessions, login and protected API routes reject non-loopback or mismatched Host headers. Existing Origin/Host equality checks continue to reject cross-origin writes. CI now tests spoofed hosts, absent Origin, incorrect localhost ports, HttpOnly/SameSite cookies, session cache headers, role separation, and session revocation. These checks do **not** prevent a server misconfigured to listen on an external interface from being reachable at the transport level; keep the Next.js server explicitly bound to `127.0.0.1` and rely on independent OS/network controls.
+
+See `SECURITY_DEPLOYMENT_GATE.md` for the formal threat inventory and release-blocking checklist. **This release does not authorize public deployment, regulated signatures or confidential client data.**
