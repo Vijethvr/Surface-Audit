@@ -1,8 +1,9 @@
 import {NextResponse} from "next/server";
-import {authConfigured,canEdit,getSession,validMutationOrigin} from "@/lib/local-auth";
+import {authConfigured,canEdit,getSession,validMutationOrigin,validLocalRequestHost} from "@/lib/local-auth";
 
 export async function requireLocalPrototype(request:Request){
  if(!authConfigured())return NextResponse.json({error:"Database API is disabled or not configured for local development"},{status:403});
+ if(!validLocalRequestHost(request))return NextResponse.json({error:"Non-local request host rejected"},{status:403});
  const user=await getSession(request);
  if(!user)return NextResponse.json({error:"Authentication required"},{status:401});
  if(!["GET","HEAD","OPTIONS"].includes(request.method)){
