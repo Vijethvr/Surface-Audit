@@ -339,6 +339,22 @@ try {
   assert.equal(approved.response.status,201,JSON.stringify(approved.body));
   assert.equal((await request(reviewRoot)).body.current,true);
   sessionCookie=adminCookie;
+  // A direct database modification without an audit event must also invalidate the
+  // content-bound reviewer approval. Restore it afterward for the normal lifecycle.
+  const {PrismaClient}=await import("@prisma/client");
+  const tamperDb=new PrismaClient();
+  try{
+   const original=await tamperDb.auditRecord.findUnique({where:{auditId:engagementId}});
+   assert.ok(original);
+   const originalContent=structuredClone(original.content);
+   await tamperDb.auditRecord.update({where:{auditId:engagementId},data:{
+    content:{...originalContent,summary:"Changed without an audit event"}
+   }});
+   assert.equal((await request(reviewRoot)).body.current,false,
+     "Approval digest must reject unlogged assessment changes");
+   await tamperDb.auditRecord.update({where:{auditId:engagementId},data:{content:originalContent}});
+   assert.equal((await request(reviewRoot)).body.current,true);
+  }finally{await tamperDb.$disconnect()}
   // Editing an assessment after independent approval must invalidate the approval.
   const changedAfterReview=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({record:{...custom,summary:"Summary amended after reviewer approval"}})});
   assert.equal(changedAfterReview.response.status,200);
