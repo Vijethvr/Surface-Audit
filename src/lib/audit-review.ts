@@ -5,9 +5,10 @@ import {reportDigest} from "@/lib/report-snapshot";
 // Remove only volatile presentation / history fields. The digest still binds
 // the approval to checklist answers, evidence manifest, findings and CAPA.
 export function reviewBasisDigest(report:NonNullable<Awaited<ReturnType<typeof buildAuditReport>>>){
- const {generatedAt: _generatedAt,activityCount: _activityCount,...basis}=report;
- void _generatedAt;void _activityCount;
- return reportDigest(basis);
+ const {generatedAt: _generatedAt,activityCount: _activityCount,audit,...basis}=report;
+ const {updatedAt: _updatedAt,...auditContent}=audit;
+ void _generatedAt;void _activityCount;void _updatedAt;
+ return reportDigest({...basis,audit:auditContent});
 }
 export async function auditReviewState(auditId:string){
  const [audit,latestReview,latestMutation]=await Promise.all([

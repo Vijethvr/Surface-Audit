@@ -75,12 +75,21 @@ jobs:
         run: npm install --no-fund
       - name: Generate Prisma Client
         run: npm run db:generate
-      - name: Apply versioned migrations to fresh PostgreSQL
+      - name: Exercise v1.3 baseline compatibility before upgrading
+        run: |
+          mkdir -p prisma/_ci_upgrade/migrations
+          cp prisma/schema.prisma prisma/_ci_upgrade/schema.prisma
+          cp prisma/migrations/migration_lock.toml prisma/_ci_upgrade/migrations/migration_lock.toml
+          cp -R prisma/migrations/20261125164000_initial_baseline prisma/_ci_upgrade/migrations/
+          npx prisma migrate deploy --schema prisma/_ci_upgrade/schema.prisma
+      - name: Apply v1.4 additive upgrade migration
         run: npx prisma migrate deploy
       - name: Verify migration/schema drift
         run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
       - name: Verify migration ledger
         run: npx prisma migrate status
+      - name: Inspect disposable database adoption status
+        run: node scripts/inspect-local-db.mjs
       - name: Seed test-only operators and roles
         run: node scripts/seed-ci-operators.mjs
       - name: Validate audit persistence over HTTP

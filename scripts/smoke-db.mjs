@@ -163,6 +163,23 @@ try {
   assert.equal(engagement.body.audit.project.id,project.body.project.id);
   assert.equal(engagement.body.audit.templateSnapshot.revision,"1.0");
   assert.equal(engagement.body.audit.templateSnapshot.criteria.length,1);
+  // v1.4: competing audit saves must not silently overwrite a loaded version.
+  const firstView=await request("/api/audits/"+encodeURIComponent(engagementId));
+  assert.equal(firstView.response.status,200);
+  const firstRevision=firstView.body.revision;
+  assert.equal(typeof firstRevision,"number");
+  const revisionWrite=await request("/api/audits/"+encodeURIComponent(engagementId),{
+    method:"PATCH",body:JSON.stringify({status:"In progress",expectedRevision:firstRevision})
+  });
+  assert.equal(revisionWrite.response.status,200,JSON.stringify(revisionWrite.body));
+  assert.equal(revisionWrite.body.revision,firstRevision+1);
+  const staleWrite=await request("/api/audits/"+encodeURIComponent(engagementId),{
+    method:"PATCH",body:JSON.stringify({status:"Scheduled",expectedRevision:firstRevision})
+  });
+  assert.equal(staleWrite.response.status,409,JSON.stringify(staleWrite.body));
+  const refreshedAudit=await request("/api/audits/"+encodeURIComponent(engagementId));
+  assert.equal(refreshedAudit.body.revision,firstRevision+1);
+  assert.equal((await request("/api/audits")).body.audits.find(row=>row.id===engagementId).revision,firstRevision+1);
   const details=await request("/api/audits/"+encodeURIComponent(engagementId));
   assert.equal(details.response.status,200);
   assert.equal(details.body.templateSnapshot.title,"CI measurement assurance "+unique);
@@ -196,7 +213,7 @@ try {
   })});
   assert.equal(unrelated.response.status,409);
   const historyV6=await request("/api/audits/"+encodeURIComponent(engagementId)+"/events");
-  assert.deepEqual(historyV6.body.events.map(e=>e.action),["AUDIT_CREATED","AUDIT_UPDATED","EQUIPMENT_ASSIGNED"]);
+  assert.deepEqual(historyV6.body.events.map(e=>e.action),["AUDIT_CREATED","AUDIT_UPDATED","AUDIT_UPDATED","EQUIPMENT_ASSIGNED"]);
 
   // v0.7: structured evidence, findings, corrective action and gated closure.
   const ev=await request("/api/audits/"+encodeURIComponent(engagementId)+"/evidence",{method:"POST",body:JSON.stringify({

@@ -23,7 +23,7 @@ const statusMap = {
 } as const;
 
 function serialize(a: {
-  id: string; title: string; type: string; status: keyof typeof statusMap;
+  id: string; title: string; type: string; revision:number; status: keyof typeof statusMap;
   targetDate: Date | null; client: { name: string }; record: { content: unknown } | null;
   project?:{id:string;name:string}|null;templateSnapshot?:unknown;
 }) {
@@ -32,7 +32,7 @@ function serialize(a: {
   const snapshot=a.templateSnapshot as {criteria?:unknown[]}|null|undefined;
   const total=Array.isArray(snapshot?.criteria)?snapshot.criteria.length:8;
   return {
-    id: a.id, title: a.title, type: a.type,
+    id: a.id, title: a.title, type: a.type,revision:a.revision,
     client: a.client.name, status: statusMap[a.status],
     date: a.targetDate ? a.targetDate.toLocaleDateString("en-GB",{ day:"2-digit",month:"short",year:"numeric",timeZone:"UTC" }) : "Not scheduled",
     project:a.project?{id:a.project.id,name:a.project.name}:null,

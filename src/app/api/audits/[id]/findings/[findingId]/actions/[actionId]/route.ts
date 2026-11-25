@@ -1,3 +1,5 @@
+import {auditMutationConflict} from "@/lib/audit-mutation";
+import {guardedAuditTransaction} from "@/lib/audit-mutation";
 import {getSession} from "@/lib/local-auth";
 import {requireEditableAudit} from "@/lib/require-editable-audit";
 import {NextResponse} from "next/server";
@@ -15,9 +17,13 @@ export async function PATCH(request:Request,ctx:{params:Promise<{id:string;findi
  const evidence=parsed.data.closureEvidence??existing.closureEvidence??"";
  const verifier=parsed.data.verifiedBy??existing.verifiedBy??"";
  if(parsed.data.status==="VERIFIED"&&(!evidence.trim()||!verifier.trim()))return NextResponse.json({error:"Verifier and closure evidence required"},{status:400});
- const action=await prisma.$transaction(async tx=>{
+ let action;try{action=await guardedAuditTransaction(id,async tx=>{
  const item=await tx.correctiveAction.update({where:{id:actionId},data:{status:parsed.data.status,closureEvidence:evidence||null,verifiedBy:parsed.data.status==="VERIFIED"?verifier:null,verifiedAt:parsed.data.status==="VERIFIED"?new Date():null}});
  await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"CAPA_STATUS_CHANGED",details:{findingId,actionId,status:item.status,reference:item.closureEvidence}}});return item;
- });
+ }); }catch(error){
+  if(auditMutationConflict(error))return NextResponse.json({error:"Audit has been sealed; reload before changing records"},{status:409});
+  throw error;
+ }
+ 
  return NextResponse.json({action});
 }

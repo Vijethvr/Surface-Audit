@@ -24,7 +24,7 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
  const {id}=await ctx.params;
  const parsed=schema.safeParse(await request.json().catch(()=>null));
  if(!parsed.success)return NextResponse.json({error:"Invalid review decision or note"},{status:400});
- const audit=await prisma.audit.findUnique({where:{id},select:{status:true,record:{select:{preparedBy:true}}}});
+ const audit=await prisma.audit.findUnique({where:{id},select:{status:true,revision:true,record:{select:{preparedBy:true}}}});
  if(!audit)return NextResponse.json({error:"Audit not found"},{status:404});
  if(audit.status!=="IN_REVIEW")return NextResponse.json({error:"Audit must be In review before independent review"},{status:409});
  const state=await auditReviewState(id);
@@ -32,10 +32,16 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
  const report=await buildAuditReport(id);
  if(parsed.data.decision==="APPROVED"&&!report?.readiness.ready)
   return NextResponse.json({error:"Audit readiness failed",blockers:report?.readiness.blockers??[]},{status:409});
- const review=await prisma.$transaction(async tx=>{
+ let review;
+ try{review=await prisma.$transaction(async tx=>{
+  const claimed=await tx.audit.updateMany({where:{id,revision:audit.revision,status:"IN_REVIEW"},data:{revision:{increment:1}}});
+  if(claimed.count!==1)throw new Error("STALE_AUDIT_REVIEW");
   const saved=await tx.auditReview.create({data:{auditId:id,reviewerId:user.id,reviewerName:user.username,decision:parsed.data.decision,note:parsed.data.note,reportDigest:report?reviewBasisDigest(report):null}});
   await tx.auditEvent.create({data:{auditId:id,actor:user.username,action:parsed.data.decision==="APPROVED"?"REVIEW_APPROVED":"REVIEW_REJECTED",details:{reviewId:saved.id,note:saved.note}}});
   return saved;
- });
+ });}catch(error){
+  if(error instanceof Error&&error.message==="STALE_AUDIT_REVIEW")return NextResponse.json({error:"Audit changed while review was prepared; reload and approve the latest revision"},{status:409});
+  throw error;
+ }
  return NextResponse.json({review},{status:201,headers:{"Cache-Control":"no-store"}});
 }

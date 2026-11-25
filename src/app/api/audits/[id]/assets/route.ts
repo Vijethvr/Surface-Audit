@@ -1,3 +1,4 @@
+import {claimAuditMutation,auditMutationConflict} from "@/lib/audit-mutation";
 import {getSession} from "@/lib/local-auth";
 import {NextResponse} from "next/server";
 import {prisma} from "@/lib/db";
@@ -31,16 +32,21 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
  if(!inspectEvidence(file.type,bytes))return NextResponse.json({error:"Unsupported or invalid content; use PDF, PNG, JPEG or UTF-8 TXT"},{status:415});
  const filename=safeFilename(file.name);
  // Bound writes, and reject new uploads to completed audits again inside transaction.
- const result=await prisma.$transaction(async tx=>{
+ let result;try{result=await prisma.$transaction(async tx=>{
+  // Claim audit-row lock before creating evidence; prevents completion/upload races.
   const audit=await tx.audit.findUnique({where:{id},select:{status:true}});
   if(!audit||audit.status==="COMPLETED")return null;
+  await claimAuditMutation(tx,id);
   const count=await tx.evidenceAsset.count({where:{auditId:id}});
   if(count>=maxEvidencePerAudit)return null;
   const asset=await tx.evidenceAsset.create({data:{auditId:id,requirementCode,filename,mimeType:file.type,sizeBytes:bytes.length,sha256:evidenceDigest(bytes),bytes,uploadedBy:(await getSession(request))!.username},
    select:{id:true,requirementCode:true,filename:true,mimeType:true,sizeBytes:true,sha256:true,uploadedBy:true,createdAt:true}});
   await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"EVIDENCE_FILE_ADDED",details:{assetId:asset.id,requirementCode,filename,sha256:asset.sha256,sizeBytes:asset.sizeBytes}}});
   return asset;
- });
+ });}catch(error){
+  if(auditMutationConflict(error))return NextResponse.json({error:"Audit was completed while evidence was uploading"},{status:409});
+  throw error;
+ }
  if(!result)return NextResponse.json({error:"Audit sealed or evidence limit reached"},{status:409});
  return NextResponse.json({asset:result},{status:201,headers:{"Cache-Control":"no-store"}});
 }

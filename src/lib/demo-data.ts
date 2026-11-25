@@ -1,5 +1,5 @@
 export type Status = "Scheduled" | "In progress" | "In review" | "Completed";
-export type Audit = { id:string; title:string; client:string; type:string; status:Status; progress:number; date:string };
+export type Audit = { id:string; title:string; client:string; type:string; status:Status; progress:number; revision?:number; date:string };
 export const initialAudits: Audit[] = [
 {id:"AUD-2026-041",title:"Surface measurement procedure assessment",client:"Nordic Precision AB",type:"Measurement assurance",status:"In progress",progress:72,date:"30 Nov 2026"},
 {id:"AUD-2026-040",title:"Calibration & traceability review",client:"AeroForm Components",type:"Equipment verification",status:"In review",progress:90,date:"27 Nov 2026"},

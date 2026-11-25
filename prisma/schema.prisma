@@ -21,6 +21,7 @@ model Audit {
   title      String
   type       String       @default("Measurement assurance")
   status     AuditStatus  @default(SCHEDULED)
+  revision   Int          @default(0)
   targetDate DateTime?
   clientId   String
   client     Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)

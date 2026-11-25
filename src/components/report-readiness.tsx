@@ -3,7 +3,7 @@ import {useCallback,useEffect,useState} from "react";
 import {CheckCircle2,AlertTriangle,ExternalLink,RefreshCw} from "lucide-react";
 import IndependentReview from "@/components/independent-review";
 type Readiness={ready:boolean;blockers:string[]};
-export default function ReportReadiness({auditId,revision}:{auditId:string;revision:number}){
+export default function ReportReadiness({auditId,revision,onReviewed}:{auditId:string;revision:number;onReviewed?:()=>void|Promise<void>}){
  const [readiness,setReadiness]=useState<Readiness|null>(null);
  const [busy,setBusy]=useState(true);
  const [error,setError]=useState("");
@@ -27,6 +27,6 @@ export default function ReportReadiness({auditId,revision}:{auditId:string;revis
   </div>}
   <a className="secondary report-link" href={"/reports/"+encodeURIComponent(auditId)} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> Open draft report / Print</a>
   <p className="registry-info">Completion also requires a current approval by an independent authenticated operator. It does not validate source evidence or constitute a formal electronic signature.</p>
-  <IndependentReview auditId={auditId} revision={revision}/>
+  <IndependentReview auditId={auditId} revision={revision} onReviewed={onReviewed}/>
  </div>;
 }

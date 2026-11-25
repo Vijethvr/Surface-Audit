@@ -1,7 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 type Review={reviewerName:string;decision:"APPROVED"|"REJECTED";note:string;reviewedAt:string};
-export default function IndependentReview({auditId,revision}:{auditId:string;revision:number}){
+export default function IndependentReview({auditId,revision,onReviewed}:{auditId:string;revision:number;onReviewed?:()=>void|Promise<void>}){
  const [role,setRole]=useState<string|null>(null);
  const [review,setReview]=useState<Review|null>(null);
  const [current,setCurrent]=useState(false);
@@ -23,7 +23,7 @@ export default function IndependentReview({auditId,revision}:{auditId:string;rev
   try{
    const r=await fetch("/api/audits/"+encodeURIComponent(auditId)+"/review",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({decision,note})});
    const data=await r.json();if(!r.ok)throw Error(data.error||"Review rejected");
-   setNote("");setMessage("Independent review recorded. Refresh the audit before completing.");await refresh();
+   setNote("");setMessage("Independent review recorded. Audit revision refreshed.");await refresh();await onReviewed?.();
   }catch(e){setError(e instanceof Error?e.message:"Unable to record review")}finally{setBusy(false)}
  }
  return <div className="independent-review"><h3>Independent operator review</h3>
