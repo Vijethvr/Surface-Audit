@@ -7,14 +7,14 @@ import {requirementCodes} from "@/lib/audit-requirements";
 export const runtime="nodejs"; export const dynamic="force-dynamic";
 const input=z.object({requirementCode:z.string().min(1).max(30),title:z.string().trim().min(2).max(200),description:z.string().trim().min(2).max(4000),severity:z.enum(["LOW","MEDIUM","HIGH","CRITICAL"]).default("MEDIUM")});
 export async function GET(request:Request,ctx:{params:Promise<{id:string}>}){
- const denied=requireLocalPrototype(request);if(denied)return denied;
+ const denied=await requireLocalPrototype(request);if(denied)return denied;
  const {id}=await ctx.params;
  if(!await requirementCodes(id))return NextResponse.json({error:"Audit not found"},{status:404});
  const findings=await prisma.finding.findMany({where:{auditId:id},include:{actions:true},orderBy:{createdAt:"desc"},take:250});
  return NextResponse.json({findings},{headers:{"Cache-Control":"no-store"}});
 }
 export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
- const denied=requireLocalPrototype(request);if(denied)return denied;
+ const denied=await requireLocalPrototype(request);if(denied)return denied;
  const {id}=await ctx.params;const parsed=input.safeParse(await request.json().catch(()=>null));
  if(!parsed.success)return NextResponse.json({error:"Invalid finding"},{status:400});
  const sealed=await requireEditableAudit(id);if(sealed)return sealed;
