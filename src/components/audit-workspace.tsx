@@ -35,7 +35,8 @@ const [availableEquipment,setAvailableEquipment]=useState<Instrument[]>([]);
 const [equipmentIds,setEquipmentIds]=useState<string[]>([]);
 const [equipmentSaving,setEquipmentSaving]=useState(false);
 const [reportRevision,setReportRevision]=useState(0);
-useEffect(()=>{if(databaseMode){fetch("/api/audits/"+encodeURIComponent(audit.id),{cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||"Unable to load checklist");setRecord(d.record);setSnapshot(d.templateSnapshot||null);setProjectName(d.project?.name||"");setEquipmentIds((d.equipment||[]).map((e:Instrument)=>e.id));
+const [auditRevision,setAuditRevision]=useState(audit.revision??0);
+useEffect(()=>{if(databaseMode){fetch("/api/audits/"+encodeURIComponent(audit.id),{cache:"no-store"}).then(async r=>{const d=await r.json();if(!r.ok)throw Error(d.error||"Unable to load checklist");setAuditRevision(d.revision);setRecord(d.record);setSnapshot(d.templateSnapshot||null);setProjectName(d.project?.name||"");setEquipmentIds((d.equipment||[]).map((e:Instrument)=>e.id));
 fetch("/api/equipment").then(async r=>{if(r.ok){const data=await r.json();setAvailableEquipment(data.equipment||[])}}).catch(()=>{});
 setError("");}).catch(e=>setError(String(e))).finally(()=>setReady(true));return;}try{const raw=localStorage.getItem("surface-audit-record:"+audit.id);if(raw){const obj=JSON.parse(raw) as AuditRecord;if(obj&&typeof obj==="object")setRecord({answers:obj.answers||{},summary:obj.summary||"",reviewer:obj.reviewer||""});}}catch{}setReady(true)},[audit.id]);
 const checklistItems=snapshot? snapshot.criteria.map(item=>({id:item.code,group:"Template",title:item.text,detail:"Requirement from the selected template revision. Record supporting evidence and observations."})):items;
@@ -44,7 +45,7 @@ const nonconforming=checklistItems.filter(i=>record.answers[i.id]?.answer==="Non
 const progress=Math.round(assessed/Math.max(1,checklistItems.length)*100);
 useEffect(()=>{if(!ready||databaseMode)return;try{localStorage.setItem("surface-audit-record:"+audit.id,JSON.stringify(record));setSaved(true);}catch{setSaved(false)}},[audit.id,ready,record]);
 const update=(id:string,patch:Partial<Entry>)=>{setRecord(current=>({...current,answers:{...current.answers,[id]:{...(current.answers[id]||blank()),...patch}}}));};
-const saveRecord=async()=>{if(!databaseMode)return;setSaving(true);setSaved(false);try{const r=await fetch("/api/audits/"+encodeURIComponent(audit.id),{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({record})});if(!r.ok)throw Error((await r.json()).error||"Save failed");setError("");setSaved(true);setReportRevision(v=>v+1);await onSaved?.()}catch(e){setError(String(e))}finally{setSaving(false)}};
+const saveRecord=async()=>{if(!databaseMode)return;setSaving(true);setSaved(false);try{const r=await fetch("/api/audits/"+encodeURIComponent(audit.id),{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({record,expectedRevision:auditRevision})});if(!r.ok)throw Error((await r.json()).error||"Save failed");setAuditRevision((await r.json()).revision);setError("");setSaved(true);setReportRevision(v=>v+1);await onSaved?.()}catch(e){setError(String(e))}finally{setSaving(false)}};
 const saveEquipment=async()=>{
  if(!databaseMode)return;setEquipmentSaving(true);
  try{const r=await fetch("/api/audits/"+encodeURIComponent(audit.id)+"/equipment",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({equipmentIds})});
