@@ -223,3 +223,28 @@ The operator-creation script now reads a project-root `.env.local` on Node 22. E
 ### Security limits
 
 The application remains **development only**. There is no public-service network hardening, MFA, per-IP distributed throttling, encrypted offline backup, external audit-history anchoring, trusted timestamps or production migration-upgrade test from historical databases. Approval and content hashes prove only consistency with database-stored data, not independent authenticity. The PostgreSQL CI gate validates a fresh installation, not upgrades of customer databases. Never expose the local API publicly or use confidential client files.
+
+
+## v1.4 — Safe local database upgrades and concurrent audit write protection
+
+**Versioned database upgrade path:** The new additive migration `20261125190000_audit_revision` introduces a monotonic audit revision field. GitHub CI explicitly applies the v1.3 migration first, upgrades through the v1.4 migration, validates migration status and absence of schema drift, then runs the full PostgreSQL HTTP test suite. This exercises an incremental upgrade between **versioned, disposable development databases**, not an upgrade from every historical v0.x database.
+
+**Read-only database inspector:** Run `node scripts/inspect-local-db.mjs` before running migrations against an existing local database. The script refuses remote/non-loopback database hosts and prints whether the database is empty, is already versioned and current, needs an incremental versioned migration, has failed migrations, or contains legacy tables without a Prisma migration ledger. The inspector **never applies migrations, changes data or creates backups**.
+
+**Concurrency protection:** Audits now have a database revision. Assessment and status saves claim their previously read revision; a stale edit returns HTTP 409 rather than silently overwriting another operator's changes. The dashboard and audit workspace pass their last observed revision and refresh after saving. Independent review decisions also claim the audit revision transactionally before recording approval. Child-record writes (equipment, findings, corrective actions, evidence references, file uploads) first lock and advance the audit revision inside their transaction, ensuring a concurrent completion operation cannot silently succeed with out-of-date records.
+
+**Limits:** Conflict detection is based on local PostgreSQL row coordination; it is not yet a complete distributed concurrency, backup/recovery or regulatory approval system. Reviewers still need to verify underlying evidence and production configuration. The service remains local-development only.
+
+### Suggested local upgrade sequence
+
+On a disposable database already using the committed v1.3 migration ledger:
+
+```bat
+node scripts/inspect-local-db.mjs
+npx prisma migrate status
+npx prisma migrate deploy
+npm run db:generate
+npm run dev -- -p 3001
+```
+
+Review and back up the database before changing its schema. **For legacy databases without `_prisma_migrations`, stop and inspect first; do not run `migrate deploy` blindly.** For a brand-new empty database, the complete versioned migration chain can be deployed directly. No actual client data or public deployment is supported yet.
