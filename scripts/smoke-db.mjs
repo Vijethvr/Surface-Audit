@@ -492,9 +492,9 @@ try {
   assert.equal((await managementExport.json()).formatVersion,"surface-audit-management-review-v2");
   const managementCsv=await fetch(base+"/api/operations/management/export?format=csv",{headers:{Cookie:sessionCookie}});
   assert.equal(managementCsv.status,200);
-  assert.match(managementCsv.headers.get("content-type")||"",/text\\/csv/);
+  assert.ok((managementCsv.headers.get("content-type")||"").includes("text/csv"));
   const csvText=await managementCsv.text();
-  assert.ok(csvText.startsWith("\\uFEFF")||csvText.charCodeAt(0)===0xFEFF);
+  assert.equal(csvText.charCodeAt(0),0xFEFF);
   assert.match(csvText,/overdueActions/);
   const dossierResponse=await fetch(base+"/api/audits/"+encodeURIComponent(engagementId)+"/dossier",{headers:{Cookie:sessionCookie}});
   assert.equal(dossierResponse.status,200);
