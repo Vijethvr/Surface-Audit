@@ -339,6 +339,16 @@ try {
   assert.equal(approved.response.status,201,JSON.stringify(approved.body));
   assert.equal((await request(reviewRoot)).body.current,true);
   sessionCookie=adminCookie;
+  // Editing an assessment after independent approval must invalidate the approval.
+  const changedAfterReview=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({record:{...custom,summary:"Summary amended after reviewer approval"}})});
+  assert.equal(changedAfterReview.response.status,200);
+  assert.equal((await request(reviewRoot)).body.current,false);
+  const staleApproval=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({status:"Completed"})});
+  assert.equal(staleApproval.response.status,409);
+  await signInAs("ci-reviewer");
+  const reapproved=await request(reviewRoot,{method:"POST",body:JSON.stringify({decision:"APPROVED",note:"Re-reviewed after updated summary was saved in the audit"})});
+  assert.equal(reapproved.response.status,201,JSON.stringify(reapproved.body));
+  sessionCookie=adminCookie;
   const adminUsers=await request("/api/operators");
   assert.equal(adminUsers.response.status,200);
   assert.ok(adminUsers.body.operators.some(user=>user.username==="ci-viewer"&&user.role==="VIEWER"));
@@ -392,7 +402,8 @@ try {
   const listedFindings=await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings");
   assert.equal(listedFindings.body.findings[0].actions[0].verifiedBy,"Second reviewer");
   const historyV7=await request("/api/audits/"+encodeURIComponent(engagementId)+"/events");
-  assert.deepEqual(historyV7.body.events.map(e=>e.action).slice(-3),["AUDIT_UPDATED","REVIEW_APPROVED","AUDIT_UPDATED"]);
+  assert.deepEqual(historyV7.body.events.map(e=>e.action).slice(-3),["AUDIT_UPDATED","REVIEW_APPROVED","AUDIT_SEALED"]);
+  assert.equal((await request(reviewRoot)).body.current,true);
 
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
   assert.equal(logout.response.status,200);
