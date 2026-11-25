@@ -297,3 +297,30 @@ The encryption script refuses existing destinations, invalid passphrases and mod
 CI runs the normal populated PostgreSQL restore drill, then encrypts/decrypts the backup and checks byte equality; deliberately wrong passphrases and altered encrypted files must fail. It also verifies that the preflight rejects a wildcard bind address. See `PROJECT_HANDOFF.md` for a durable project handoff to new conversations.
 
 **Status:** Local-development only. Do not expose database APIs publicly or store sensitive client records. Threat modeling, MFA, malware scanning, externally protected signing and operational security review are still required.
+
+
+## v1.7 — Independently verifiable signed audit dossier (offline, development)
+
+**Why this exists:** The previous dossier contained only hashes stored alongside the report; anyone who could replace the entire JSON package could recalculate those hashes. v1.7 adds an **offline Ed25519 signature** to a completed, integrity-verified audit dossier. The signing private key stays on a separate trusted workstation; it is never submitted to the Next.js app, database, GitHub, API, or dossier. Recipients must obtain and trust the **public key separately** from the signed package.
+
+The workflow is available after **Completion** and successful snapshot/evidence consistency checks. The report page explains the offline signing option. In Windows Anaconda Prompt from the repository root:
+
+1. **Generate a key pair on a trusted offline computer (once per signer).** Set the environment variable `SURFACE_AUDIT_SIGNING_PASSPHRASE` to a strong, unique passphrase (at least 20 characters; do not commit or paste it in chat). Then run:
+   ```bat
+   node scripts/dossier-signature.mjs keygen C:\\surface-audit-keys\\reviewer-key
+   ```
+   This creates `signing-private.encrypted.pem` (encrypted PKCS#8 Ed25519 private key) and `signing-public.pem` (shareable public key) in a **new** directory. Back up the private key and passphrase **separately**, and verify the recipient received the public key through an independently trusted channel. Never place private keys inside the repository or normal backup dossier.
+2. **Export** the completed audit's JSON dossier from the report screen (must be sealed and pass the existing `verifyDossier` checks). Sign the whole package on the private-key computer:
+   ```bat
+   node scripts/dossier-signature.mjs sign C:\\audit-export\\dossier.json C:\\surface-audit-keys\\reviewer-key\\signing-private.encrypted.pem C:\\audit-export\\signed-dossier.json "Independent reviewer"
+   ```
+   The resulting signed JSON includes the dossier, the signer label, a self-reported local-clock time, the public-key fingerprint and an Ed25519 signature over **all these values**.
+3. **Independently verify** on another machine using the separately trusted public key:
+   ```bat
+   node scripts/dossier-signature.mjs verify C:\\audit-export\\signed-dossier.json C:\\trusted-keys\\signing-public.pem
+   ```
+   Verification checks the expected public-key fingerprint, the Ed25519 signature, all report and evidence-file hashes, the sealed snapshot, and audit completion. It fails on wrong keys, modified metadata, changed reports or file bytes, wrong passphrase, or a draft/unsealed dossier. Outputs are never overwritten.
+
+**Security meaning:** A valid signature demonstrates that the private key corresponding to the **trusted public key** signed that exact dossier. It does **not** independently validate real-world signer identity, authorization, calibrated measurements, malware safety, or a legally binding review. The embedded signing date is the signer's **untrusted local clock**, not a trusted timestamp. Compromised keys can sign forged content; maintain a public-key trust registry and revocation procedure before real deployment. No independent TSA, HSM, certificate authority, production key rotation or durable external evidence archive is implemented.
+
+**CI:** After real authenticated audit execution and dossier export, isolated PostgreSQL CI generates disposable Ed25519 keys, signs the sealed dossier, verifies with the correct public key, and confirms rejection for the wrong key/passphrase, altered report (including recomputed unsigned hashes), edited evidence bytes, modified signer label, missing attachments, attempts to sign a draft and output overwrite. The real application still runs **local-development only**, with no actual sensitive client data.

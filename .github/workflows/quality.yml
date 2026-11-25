@@ -94,6 +94,8 @@ jobs:
         run: node scripts/seed-ci-operators.mjs
       - name: Validate audit persistence over HTTP
         run: node scripts/smoke-db.mjs
+      - name: Verify offline Ed25519 dossier signatures and reject forged exports
+        run: node scripts/test-dossier-signatures.mjs /tmp/surface-audit-ci-sealed-dossier.json
       - name: Select PostgreSQL 16 clients from the service container image
         run: |
           mkdir -p /tmp/surface-audit-pg16-tools

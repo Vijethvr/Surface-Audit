@@ -430,6 +430,7 @@ try {
   assert.equal(dossier.formatVersion,"surface-audit-dossier-v1");
   assert.equal(dossier.assets.length,1);
   assert.equal(dossier.assets[0].sha256,uploaded.body.asset.sha256);
+  if(process.env.CI==="true")await (await import("node:fs/promises")).writeFile("/tmp/surface-audit-ci-sealed-dossier.json",JSON.stringify(dossier,null,2));
   const verifiedDossier=verifyDossier(dossier);
   assert.equal(verifiedDossier.valid,true,JSON.stringify(verifiedDossier));
   const corruptEvidence=structuredClone(dossier);
