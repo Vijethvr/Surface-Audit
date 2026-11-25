@@ -1,9 +1,10 @@
 import {NextResponse} from "next/server";
 import {prisma} from "@/lib/db";
-import {authConfigured,cookieName,createSession,sessionMaxAge,validMutationOrigin,verifyPassword} from "@/lib/local-auth";
+import {authConfigured,cookieName,createSession,sessionMaxAge,validMutationOrigin,validLocalRequestHost,verifyPassword} from "@/lib/local-auth";
 export const runtime="nodejs";
 export async function POST(request:Request){
  if(!authConfigured())return NextResponse.json({error:"Local authentication is disabled"},{status:503});
+ if(!validLocalRequestHost(request))return NextResponse.json({error:"Non-local request host rejected"},{status:403});
  if(!validMutationOrigin(request))return NextResponse.json({error:"Invalid origin"},{status:403});
  let credentials:unknown;
  try{credentials=await request.json()}catch{return NextResponse.json({error:"Invalid request"},{status:400})}
