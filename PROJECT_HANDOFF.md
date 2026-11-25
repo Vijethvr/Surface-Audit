@@ -1,6 +1,6 @@
 # SURFACE Audit — Project Handoff for a New Chat
 
-**Status date:** 25 November 2026 (Europe/Stockholm) — v1.7 development branch snapshot.  
+**Status date:** 25 November 2026 (Europe/Stockholm) — v1.8 development branch snapshot.  
 **Canonical repository:** https://github.com/Vijethvr/Surface-Audit  
 **Default branch:** `main`  
 **Purpose:** Long-term continuity between ChatGPT conversations. **Always check live GitHub status and code before acting; this handoff is a dated snapshot, not live state.**
@@ -48,7 +48,7 @@ The demo-browser storage mode exists separately. Database mode is a local-develo
 | v1.3 | Account lockout, content-bound review, versioned migration baseline | #15 |
 | v1.4 | Audit optimistic revisions, concurrent-write coordination, migration inspector | #16 |
 | v1.5 | Local backup and restore drill, append-only database history triggers | #17 |
-| **v1.6** | **Encrypted local recovery package + safe local configuration preflight + continuity document** | **#18, verified present on main at start of v1.7** |\n| **v1.7** | **Offline independently verifiable Ed25519 signed sealed audit dossiers** | **New development PR; verify status and final CI before merging** |
+| **v1.6** | **Encrypted local recovery package + safe local configuration preflight + continuity document** | **#18, verified present on main at start of v1.7** |\n| **v1.7** | **Offline independently verifiable Ed25519 signed sealed audit dossiers** | **#19, verified present on main at start of v1.8** |\n| **v1.8** | **Public-key trust registry, local security attack tests and deployment threat model** | **New development PR; verify status and final CI before merging** |
 
 As of the start of v1.6, the v1.5 migration file and recovery tool were confirmed on `main`. Verify v1.6 and any later merges afresh.
 
@@ -70,6 +70,14 @@ Current branch: `feat/offline-signed-dossiers-v1.7` targeting `main`. The new `s
 **Before treating v1.7 as complete:** verify the new PR, latest final commit, both GitHub Actions jobs, and merge status. The CI test must verify wrong keys/passphrase, changed report including recomputed hashes, altered evidence, metadata tamper, unsigned draft and overwrite rejection. This is **not** an accredited electronic signature, certificate authority, trusted timestamp, external record archive or attested author identity.
 
 The prior downloadable Word handoff dated 2026-11-25 is a historical snapshot. This repository file is the **more current, maintained** handoff and should take precedence in new threads.
+
+## 5B. v1.8 security assurance and trusted key governance
+
+Current development branch `feat/security-assurance-trust-registry-v1.8` from `main`; verify its PR, final CI run and merge status. New `scripts/trusted-signers.mjs` is an **offline local** Ed25519 trusted-public-key registry with fingerprint-confirmed enrollment, revocation, and signed-dossier verification by a policy-pinned public key. No private keys are moved into the Next.js app; do not treat an editable JSON registry as a certificate authority or independent evidence of author identity.
+
+`src/lib/local-auth.ts`, `src/lib/dev-api.ts` and login route have additional loopback Host/URL checks. `scripts/smoke-db.mjs` now rejects spoofed hosts, missing/incorrect Origin, and tests cookie attributes alongside existing reviewer/role/session tests. `scripts/test-dossier-signatures.mjs` tests key enrollment, rejection of unknown keys, tampering and revocation. New `SECURITY_DEPLOYMENT_GATE.md` documents threats, mitigations, gaps and production-release blockers.
+
+**Before calling v1.8 complete**: check final two GitHub Actions jobs for the final commit, mark PR ready only after both pass and leave merge to user. Production remains prohibited.
 
 ## 6. Windows developer environment
 
@@ -108,10 +116,10 @@ Check the latest PR, `main` and workflow runs before saying a milestone is compl
 
 ## 9. Prioritized substantial next steps
 
-1. **v1.7 acceptance:** validate signed dossier CLI against real sealed audit fixtures, fix failures and complete PR review after both final CI jobs pass.
+1. **v1.8 acceptance:** validate trusted-key governance, Host/Origin boundary tests and the new threat model through GitHub Actions, then leave merge approval to the user.
 2. **Security assessment:** automated local attack-boundary tests, database access restrictions, authentication response timing/concurrency, session protections and dependency patch management.
 3. **Backup operations:** secure passphrase management, offsite encrypted archival with restore drill, retention and cleanup policy, recovery objectives and a deployment runbook.
-4. **Independent evidentiary integrity:** v1.7 adds separately keyed signatures; a trusted key registry, revocation process, certified signing authority and external timestamp integration remain to implement.
+4. **Independent evidentiary integrity:** v1.7 provides signatures and v1.8 provides an editable local key trust/revocation registry; independently protected registry, certified signing authority, trusted timestamps and key-custody operations remain unimplemented.
 5. **Production architecture decision:** threat model, hosting/deployment plan, migration/rollback drills, secure file scanning/storage and external security review before any client data.
 
 These are recommendations, not implemented capabilities.

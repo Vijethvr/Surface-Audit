@@ -7,6 +7,7 @@ import {join,resolve} from "node:path";
 import {spawnSync} from "node:child_process";
 import {createHash} from "node:crypto";
 import {verifySignedDossier,signDossier} from "./dossier-signature.mjs";
+import {keyFingerprint,verifyWithRegistry} from "./trusted-signers.mjs";
 import {verifyDossier} from "./verify-dossier.mjs";
 const sample=process.argv[2];
 if(process.env.CI!=="true"||!sample)throw Error("CI-only test expects path to exported sealed dossier");
@@ -72,5 +73,31 @@ try{
  const fakeDraft=structuredClone(dossier);
  fakeDraft.reportIntegrity.snapshot=false;
  assert.throws(()=>signDossier(fakeDraft,readFileSync(privatePath),passphrase,"CI independent reviewer"));
+ // v1.8: explicit out-of-band fingerprint pinning and irrevocable local revocation.
+ const registry=join(dir,"trusted-signers.json");
+ const trustScript=resolve("scripts/trusted-signers.mjs");
+ function trust(args){
+  return spawnSync(process.execPath,[trustScript,...args],{env,encoding:"utf8",timeout:20000});
+ }
+ function trustPass(args){const result=trust(args);assert.equal(result.status,0,result.stderr||result.stdout)}
+ function trustFail(args){const result=trust(args);assert.notEqual(result.status,0,"Expected trust policy rejection: "+args.join(" "))}
+ trustPass(["init",registry]);
+ trustFail(["init",registry]);
+ const fingerprint=keyFingerprint(readFileSync(pub));
+ trustFail(["enroll",registry,pub,"CI reviewer","--confirm="+("0".repeat(64))]);
+ trustFail(["verify",registry,signedPath]); // No trusted key enrolled.
+ trustPass(["enroll",registry,pub,"CI reviewer","--confirm="+fingerprint]);
+ const enrolledRegistry=JSON.parse(readFileSync(registry,"utf8"));
+ assert.equal(verifyWithRegistry(enrolledRegistry,signed).valid,true);
+ trustPass(["verify",registry,signedPath]);
+ trustFail(["enroll",registry,pub,"duplicate reviewer","--confirm="+fingerprint]);
+ trustFail(["verify",registry,tamperedPath]);
+ trustFail(["verify",registry,tamperedEvidencePath]);
+ trustPass(["revoke",registry,fingerprint,"Private key no longer trusted"]);
+ trustFail(["verify",registry,signedPath]);
+ trustFail(["enroll",registry,pub,"re-add revoked key","--confirm="+fingerprint]);
+ trustFail(["revoke",registry,fingerprint,"repeated revocation"]);
+ assert.equal(verifyWithRegistry(JSON.parse(readFileSync(registry,"utf8")),signed).valid,false);
+ console.log("PASS: out-of-band pinned key enrollment, unknown key rejection, forged signature rejection and key revocation");
  console.log("PASS: real sealed dossier signed, independently verified and rejected under wrong key/passphrase, tampered report/evidence/label, unsigned draft and overwrite attempts");
 }finally{rmSync(dir,{recursive:true,force:true})}

@@ -61,6 +61,19 @@ try {
   assert.ok(sessionCookie.startsWith("surface_audit_session="));
   const crossSite=await request("/api/audits",{method:"POST",headers:{Origin:"https://attacker.example"},body:JSON.stringify({title:"Disallowed",client:"Disallowed"})});
   assert.equal(crossSite.response.status,403);
+  // v1.8 local boundary regression: attacker-controlled hosts, CSRF and sessions.
+  // Next.js normalizes raw Host headers in its Request object. Do not interpret
+  // a raw Host test as network-edge protection; test visible write origins below.
+  const missingOrigin=await request("/api/audits",{method:"POST",headers:{Origin:""},body:JSON.stringify({title:"Missing origin",client:"No client"})});
+  assert.equal(missingOrigin.response.status,403,"State-changing requests must carry the same-origin header");
+  const invalidOriginPort=await request("/api/audits",{method:"POST",headers:{Origin:"http://127.0.0.1:9999"},body:JSON.stringify({title:"Wrong origin port",client:"No client"})});
+  assert.equal(invalidOriginPort.response.status,403);
+  const sessionResponse=await request("/api/auth/session");
+  assert.equal(sessionResponse.body.authenticated,true);
+  assert.equal(sessionResponse.body.role,"ADMIN");
+  assert.match(sessionResponse.response.headers.get("cache-control")||"",/no-store/);
+  assert.match(login.response.headers.get("set-cookie")||"",/httponly/i);
+  assert.match(login.response.headers.get("set-cookie")||"",/samesite=strict/i);
   const unique = `CI-${Date.now()}`;
   const created = await request("/api/audits", {
     method: "POST",
