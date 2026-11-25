@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import type {Prisma} from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireLocalPrototype } from "@/lib/dev-api";
 import { buildAuditReport } from "@/lib/audit-report";
@@ -50,13 +51,13 @@ export async function PATCH(request:Request,context:{params:Promise<{id:string}>
     }
     // Prevent bypassing the closure gate by supplying a new unsaved assessment
     // and a completed status in the same request.
-    let sealingReport:Record<string,unknown>|null=null;
+    let sealingReport:Prisma.InputJsonValue|null=null;
     if(parsed.data.status==="Completed"){
       if(parsed.data.record)return NextResponse.json({error:"Save the assessment separately before requesting completion"},{status:409});
       const current=await buildAuditReport(id);
       if(!current)return NextResponse.json({error:"Audit not found"},{status:404});
       if(!current.readiness.ready)return NextResponse.json({error:"Audit not ready for completion",blockers:current.readiness.blockers},{status:409});
-      sealingReport=JSON.parse(JSON.stringify({...current,audit:{...current.audit,status:"COMPLETED"},reportStatus:"SEALED DEVELOPMENT REPORT — NOT AN APPROVED COMPLIANCE CERTIFICATE"})) as Record<string,unknown>;
+      sealingReport=JSON.parse(JSON.stringify({...current,audit:{...current.audit,status:"COMPLETED"},reportStatus:"SEALED DEVELOPMENT REPORT — NOT AN APPROVED COMPLIANCE CERTIFICATE"})) as Prisma.InputJsonValue;
     }
     await prisma.$transaction(async tx=>{
       if(parsed.data.status)await tx.audit.update({where:{id},data:{status:dbStatus[parsed.data.status]}});
