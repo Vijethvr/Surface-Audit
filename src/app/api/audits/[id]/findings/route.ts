@@ -1,3 +1,4 @@
+import {guardedAuditTransaction} from "@/lib/audit-mutation";
 import {getSession} from "@/lib/local-auth";
 import {requireEditableAudit} from "@/lib/require-editable-audit";
 import {NextResponse} from "next/server";
@@ -22,7 +23,7 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
  const codes=await requirementCodes(id);
  if(!codes)return NextResponse.json({error:"Audit not found"},{status:404});
  if(!codes.has(parsed.data.requirementCode))return NextResponse.json({error:"Requirement not in audit"},{status:400});
- const finding=await prisma.$transaction(async tx=>{
+ const finding=await guardedAuditTransaction(id,async tx=>{
   const item=await tx.finding.create({data:{auditId:id,...parsed.data}});
   await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"FINDING_CREATED",details:{findingId:item.id,requirementCode:item.requirementCode,severity:item.severity}}});
   return item;
