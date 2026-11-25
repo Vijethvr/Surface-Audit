@@ -5,7 +5,8 @@ import {useParams} from "next/navigation";
 type Ref={reference:string;description:string|null};
 type Action={description:string;owner:string;dueDate:string|null;status:string;closureEvidence:string|null;verifiedBy:string|null};
 type Finding={id:string;title:string;description:string;severity:string;status:string;actions:Action[]};
-type Req={code:string;title:string;assessment:string;observation:string;reference:string;evidenceReferences:Ref[];findings:Finding[]};
+type EvidenceFile={id:string;filename:string;mimeType:string;sizeBytes:number;sha256:string;createdAt:string};
+type Req={code:string;title:string;assessment:string;observation:string;reference:string;evidenceReferences:Ref[];evidenceFiles?:EvidenceFile[];findings:Finding[]};
 type Report={
  reportType:string;reportStatus:string;generatedAt:string;
  audit:{id:string;title:string;status:string;type:string;createdAt:string;client:string;project:string|null};
@@ -70,6 +71,7 @@ export default function ReportView(){
     <p><b>Assessment:</b> {req.assessment}</p><p><b>Observation:</b> {req.observation||"None recorded"}</p>
     {req.reference&&<p><b>Checklist reference:</b> {req.reference}</p>}
     {req.evidenceReferences.map((e,i)=><p key={i}><b>Evidence reference:</b> {e.reference} {e.description?(" — "+e.description):""}</p>)}
+    {(req.evidenceFiles??[]).map(file=><p key={file.id}><b>Attached file:</b> {file.filename} ({file.sizeBytes} bytes), SHA-256 <code>{file.sha256}</code></p>)}
     {req.findings.map(f=><div className="report-finding" key={f.id}><p><b>Finding:</b> {f.title} · {f.severity} · {f.status}</p><p>{f.description}</p>
      {f.actions.map((a,i)=><p key={i}>Action: {a.description} · Owner: {a.owner} · Status: {a.status} · Verification ref: {a.closureEvidence||"None"} · Verifier: {a.verifiedBy||"None"}</p>)}
     </div>)}
