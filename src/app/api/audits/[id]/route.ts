@@ -5,6 +5,7 @@ import type {Prisma} from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireLocalPrototype } from "@/lib/dev-api";
 import { buildAuditReport } from "@/lib/audit-report";
+import {auditReviewState} from "@/lib/audit-review";
 import {reportDigest} from "@/lib/report-snapshot";
 
 export const runtime="nodejs";
@@ -55,6 +56,9 @@ export async function PATCH(request:Request,context:{params:Promise<{id:string}>
     let sealingReport:Prisma.InputJsonValue|null=null;
     if(parsed.data.status==="Completed"){
       if(parsed.data.record)return NextResponse.json({error:"Save the assessment separately before requesting completion"},{status:409});
+      if(exists.status!=="IN_REVIEW")return NextResponse.json({error:"Audit must be In review before completion"},{status:409});
+      const review=await auditReviewState(id);
+      if(!review.current)return NextResponse.json({error:"A current independent approval is required before completion"},{status:409});
       const current=await buildAuditReport(id);
       if(!current)return NextResponse.json({error:"Audit not found"},{status:404});
       if(!current.readiness.ready)return NextResponse.json({error:"Audit not ready for completion",blockers:current.readiness.blockers},{status:409});
