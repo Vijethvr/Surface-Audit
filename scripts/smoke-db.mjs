@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
+import {verifyDossier} from "./verify-dossier.mjs";
 
 const port = 3017;
 const base = `http://127.0.0.1:${port}`;
@@ -314,6 +315,21 @@ try {
   assert.equal(sealedReport.body.report.audit.status,"COMPLETED");
   assert.ok(sealedReport.body.report.requirements[0].evidenceReferences.some(e=>e.reference==="CERT-"+unique));
   assert.equal(sealedReport.body.report.requirements[0].evidenceFiles[0].sha256,uploaded.body.asset.sha256);
+  const dossierResponse=await fetch(base+"/api/audits/"+encodeURIComponent(engagementId)+"/dossier",{headers:{Cookie:sessionCookie}});
+  assert.equal(dossierResponse.status,200);
+  assert.ok(dossierResponse.headers.get("content-disposition")?.includes("attachment"));
+  const dossier=await dossierResponse.json();
+  assert.equal(dossier.formatVersion,"surface-audit-dossier-v1");
+  assert.equal(dossier.assets.length,1);
+  assert.equal(dossier.assets[0].sha256,uploaded.body.asset.sha256);
+  const verifiedDossier=verifyDossier(dossier);
+  assert.equal(verifiedDossier.valid,true,JSON.stringify(verifiedDossier));
+  const corruptEvidence=structuredClone(dossier);
+  corruptEvidence.assets[0].base64=Buffer.from("corrupted").toString("base64");
+  assert.equal(verifyDossier(corruptEvidence).valid,false);
+  const corruptReport=structuredClone(dossier);
+  corruptReport.report.summary="Altered after export";
+  assert.equal(verifyDossier(corruptReport).valid,false);
   const blockedUpload=await uploadEvidence(pdfBytes,"application/pdf");
   assert.equal(blockedUpload.response.status,409);
   const blockedEdit=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({record:custom})});
@@ -347,6 +363,7 @@ try {
   assert.equal((await request("/api/operations")).response.status,401);
   assert.equal((await request("/api/operations/export?type=audits")).response.status,401);
   assert.equal((await request(assetRoot)).response.status,401);
+  assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/dossier")).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
   child.kill("SIGTERM");
