@@ -4,7 +4,7 @@ import {z} from "zod";import {prisma} from "@/lib/db";import {requireLocalProtot
 export const runtime="nodejs";
 const input=z.object({description:z.string().trim().min(3).max(2000),owner:z.string().trim().min(2).max(160),dueDate:z.string().date().nullable().optional()});
 export async function POST(request:Request,ctx:{params:Promise<{id:string;findingId:string}>}){
- const denied=requireLocalPrototype(request);if(denied)return denied;
+ const denied=await requireLocalPrototype(request);if(denied)return denied;
  const {id,findingId}=await ctx.params;const parsed=input.safeParse(await request.json().catch(()=>null));
  if(!parsed.success)return NextResponse.json({error:"Invalid corrective action"},{status:400});
  const sealed=await requireEditableAudit(id);if(sealed)return sealed;
