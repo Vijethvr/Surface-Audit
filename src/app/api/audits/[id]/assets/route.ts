@@ -1,3 +1,4 @@
+import {claimAuditMutation} from "@/lib/audit-mutation";
 import {getSession} from "@/lib/local-auth";
 import {NextResponse} from "next/server";
 import {prisma} from "@/lib/db";
@@ -32,8 +33,10 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
  const filename=safeFilename(file.name);
  // Bound writes, and reject new uploads to completed audits again inside transaction.
  const result=await prisma.$transaction(async tx=>{
+  // Claim audit-row lock before creating evidence; prevents completion/upload races.
   const audit=await tx.audit.findUnique({where:{id},select:{status:true}});
   if(!audit||audit.status==="COMPLETED")return null;
+  await claimAuditMutation(tx,id);
   const count=await tx.evidenceAsset.count({where:{auditId:id}});
   if(count>=maxEvidencePerAudit)return null;
   const asset=await tx.evidenceAsset.create({data:{auditId:id,requirementCode,filename,mimeType:file.type,sizeBytes:bytes.length,sha256:evidenceDigest(bytes),bytes,uploadedBy:(await getSession(request))!.username},
