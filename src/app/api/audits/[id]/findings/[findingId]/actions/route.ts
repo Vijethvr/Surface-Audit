@@ -1,3 +1,4 @@
+import {getSession} from "@/lib/local-auth";
 import {requireEditableAudit} from "@/lib/require-editable-audit";
 import {NextResponse} from "next/server";
 import {z} from "zod";import {prisma} from "@/lib/db";import {requireLocalPrototype} from "@/lib/dev-api";
@@ -13,7 +14,7 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string;findin
  if(finding.status==="CLOSED")return NextResponse.json({error:"Cannot change closed finding"},{status:409});
  const action=await prisma.$transaction(async tx=>{
  const item=await tx.correctiveAction.create({data:{findingId,description:parsed.data.description,owner:parsed.data.owner,dueDate:parsed.data.dueDate?new Date(parsed.data.dueDate+"T00:00:00Z"):null}});
- await tx.auditEvent.create({data:{auditId:id,actor:process.env.SURFACE_AUDIT_ADMIN_USERNAME!,action:"CAPA_CREATED",details:{findingId,actionId:item.id,owner:item.owner}}});return item;
+ await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"CAPA_CREATED",details:{findingId,actionId:item.id,owner:item.owner}}});return item;
  });
  return NextResponse.json({action},{status:201});
 }
