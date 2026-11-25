@@ -41,7 +41,7 @@ function serialize(a: {
 }
 
 export async function GET(request:Request) {
-  const denied = requireLocalPrototype(request); if (denied) return denied;
+  const denied = await requireLocalPrototype(request); if (denied) return denied;
   try {
     const rows = await prisma.audit.findMany({
       include:{client:true,record:true,project:true},
@@ -54,7 +54,7 @@ export async function GET(request:Request) {
 }
 
 export async function POST(request:Request) {
-  const denied = requireLocalPrototype(request); if (denied) return denied;
+  const denied = await requireLocalPrototype(request); if (denied) return denied;
   let payload:unknown;
   try {payload=await request.json();} catch {return NextResponse.json({error:"Invalid JSON body"},{status:400});}
   const parsed=createInput.safeParse(payload);
