@@ -34,6 +34,7 @@ model Audit {
   equipmentLinks AuditEquipment[]
   findings   Finding[]
   evidenceReferences EvidenceReference[]
+  evidenceAssets EvidenceAsset[]
   reportSnapshot AuditReportSnapshot?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
@@ -193,4 +194,21 @@ model AuditReportSnapshot {
   report      Json
   sha256      String
   createdAt   DateTime @default(now())
+}
+
+// Local-development evidence custody. No independent signatures or file-scanning service.
+model EvidenceAsset {
+  id              String   @id @default(cuid())
+  auditId         String
+  audit           Audit    @relation(fields: [auditId], references: [id], onDelete: Restrict)
+  requirementCode String
+  filename        String
+  mimeType        String
+  sizeBytes       Int
+  sha256          String
+  bytes           Bytes
+  uploadedBy      String
+  createdAt       DateTime @default(now())
+
+  @@index([auditId, requirementCode])
 }
