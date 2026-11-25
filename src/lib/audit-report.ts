@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import {evidenceDigest} from "@/lib/evidence-vault";
 
 export const defaultRequirements=[
   {code:"REQ-01",text:"Drawing and specification requirements identified"},
@@ -19,6 +20,7 @@ export async function buildAuditReport(id:string){
   client:true,project:true,record:true,
   equipmentLinks:{include:{equipment:true},orderBy:{assignedAt:"asc"}},
   evidenceReferences:{orderBy:{createdAt:"asc"}},
+  evidenceAssets:{orderBy:{createdAt:"asc"}},
   findings:{include:{actions:{orderBy:{createdAt:"asc"}}},orderBy:{createdAt:"asc"}},
   events:{orderBy:{createdAt:"asc"},take:500}
  }});
@@ -28,6 +30,9 @@ export async function buildAuditReport(id:string){
  const content=(audit.record?.content??{}) as Assessment;
  const answers=content.answers??{};
  const blockers:string[]=[];
+ for(const asset of audit.evidenceAssets){
+  if(evidenceDigest(Buffer.from(asset.bytes))!==asset.sha256 || asset.sizeBytes!==asset.bytes.length)blockers.push("Evidence file "+asset.id+" failed integrity validation.");
+ }
  if(!content.reviewer?.trim())blockers.push("Reviewer identifier is missing.");
  if(!content.summary?.trim())blockers.push("Overall assessment summary is missing.");
  for(const requirement of requirements){
@@ -54,11 +59,12 @@ export async function buildAuditReport(id:string){
   requirements:requirements.map(r=>({code:r.code,title:r.text,
    assessment:answers[r.code]?.answer??"Not assessed",observation:answers[r.code]?.comment??"",reference:answers[r.code]?.reference??"",
    evidenceReferences:audit.evidenceReferences.filter(e=>e.requirementCode===r.code).map(e=>({reference:e.reference,description:e.description})),
+   evidenceFiles:audit.evidenceAssets.filter(e=>e.requirementCode===r.code).map(e=>({id:e.id,filename:e.filename,mimeType:e.mimeType,sizeBytes:e.sizeBytes,sha256:e.sha256,createdAt:e.createdAt})),
    findings:audit.findings.filter(f=>f.requirementCode===r.code).map(f=>({id:f.id,title:f.title,description:f.description,severity:f.severity,status:f.status,
     actions:f.actions.map(a=>({description:a.description,owner:a.owner,dueDate:a.dueDate,status:a.status,closureEvidence:a.closureEvidence,verifiedBy:a.verifiedBy,verifiedAt:a.verifiedAt}))}))
   })),
   equipment:audit.equipmentLinks.map(l=>({identifier:l.equipment.identifier,name:l.equipment.name,calibrationReference:l.equipment.calibrationReference,calibrationDue:l.equipment.calibrationDue})),
-  counts:{assessed,total:requirements.length,findings:audit.findings.length,openFindings:audit.findings.filter(f=>f.status!=="CLOSED").length,evidenceReferences:audit.evidenceReferences.length},
+  counts:{assessed,total:requirements.length,findings:audit.findings.length,openFindings:audit.findings.filter(f=>f.status!=="CLOSED").length,evidenceReferences:audit.evidenceReferences.length,evidenceFiles:audit.evidenceAssets.length},
   readiness:{ready:blockers.length===0,blockers},
   activityCount:audit.events.length,
  };
