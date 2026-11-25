@@ -190,3 +190,36 @@ Set `SURFACE_AUDIT_ENABLE_LOCAL_API=true` in the **shell environment** too when 
 **Important limits:** This is role separation within a **local development prototype**, not a production identity system. There is still no tested production migration history, MFA, rate limiting, centralized identity, trustworthy audit-signature service, robust transaction isolation for concurrent reviewer/editor changes, or independent external timestamping. A local DB administrator can still alter review or history data. Review approval is a development workflow decision, **not a regulatory signature or calibration approval**. Do not expose the application publicly or enter confidential customer data.
 
 The isolated CI database seeds fake admin/editor/reviewer/viewer identities and tests session revocation, role restrictions, self-review rejection and independent approval. Do not apply a new migration blindly to a real database; back it up and review the generated SQL first.
+
+
+## v1.3 — Local security gate and versioned PostgreSQL baseline
+
+This release introduces three safeguards together:
+
+1. **Account lockout and recovery.** Five failed password attempts in a fifteen-minute period temporarily block a local operator login. Errors remain generic. A signed-in administrator can inspect failed-attempt counts and reset a lockout at `/operators`. This is account-based throttling, **not** an IP-wide denial-of-service defense or distributed rate limiter. Multiple concurrent attempts are not yet transactionally serialized.
+2. **Content-bound independent review.** The audit record stores the last authenticated assessment preparer. An operator cannot approve an assessment they prepared, even if someone else subsequently changes the workflow status. Approval stores a SHA-256 of the substantive report content; generated timestamps and activity-event counts are excluded. Changing underlying assessment content invalidates approval, even if no normal audit event is created. A new independent review is needed before completion. The digest still is not externally anchored or a regulatory electronic signature.
+3. **Committed initial database migration.** The full v1.3 schema is captured in `prisma/migrations/20261125164000_initial_baseline/migration.sql`. The GitHub PostgreSQL job starts with an empty database, runs `prisma migrate deploy`, verifies that its schema matches `schema.prisma` using Prisma's `migrate diff --exit-code`, then runs the complete authenticated HTTP regression suite. This replaces CI's earlier `prisma db push` shortcut.
+
+### First-time setup of a disposable local development database
+
+Set `DATABASE_URL` to a new, empty PostgreSQL development database. Set `SURFACE_AUDIT_ENABLE_LOCAL_API=true` and `NEXT_PUBLIC_SURFACE_AUDIT_STORAGE_MODE=postgres` in your local development environment. With Node 22 installed:
+
+```bat
+npm install
+npm run db:generate
+npx prisma migrate deploy
+node scripts/create-local-operator.mjs local-admin ADMIN
+node scripts/create-local-operator.mjs auditor EDITOR
+node scripts/create-local-operator.mjs reviewer REVIEWER
+npm run dev -- -p 3001
+```
+
+On Windows, the standalone operator-creation script requires `SURFACE_AUDIT_ENABLE_LOCAL_API=true` **in the command shell** as well; Next.js `.env.local` is not automatically loaded by that standalone script. Never commit passwords or actual client records.
+
+### Existing local databases require a separate decision
+
+**Do not apply the initial baseline migration to an existing database containing tables.** Earlier prototypes used `prisma db push` and have no migration ledger. Back up and inspect any database with information you want to preserve. The safest supported development path is to use a **fresh, disposable database** with the committed migration. Adopting a pre-existing database requires a separately reviewed data-preserving migration or a carefully validated Prisma baseline-resolution procedure; it is deliberately not automated by this release.
+
+### Security limits
+
+The application remains **development only**. There is no public-service network hardening, MFA, per-IP distributed throttling, encrypted offline backup, external audit-history anchoring, trusted timestamps or production migration-upgrade test from historical databases. Approval and content hashes prove only consistency with database-stored data, not independent authenticity. The PostgreSQL CI gate validates a fresh installation, not upgrades of customer databases. Never expose the local API publicly or use confidential client files.
