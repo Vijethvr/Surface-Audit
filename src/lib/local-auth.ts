@@ -52,7 +52,7 @@ export function validLocalRequestHost(request:Request){
   const requestUrl=new URL(request.url);
   if(!["localhost","127.0.0.1","[::1]"].includes(parsed.hostname))return false;
   if(!["localhost","127.0.0.1","[::1]"].includes(requestUrl.hostname))return false;
-  return parsed.host===requestUrl.host&&parsed.username===""&&parsed.password==="";
+  return parsed.port===requestUrl.port&&parsed.username===""&&parsed.password==="";
  }catch{return false}
 }
 export function validMutationOrigin(request:Request){
