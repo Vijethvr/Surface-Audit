@@ -1,3 +1,4 @@
+import {getSession} from "@/lib/local-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -79,7 +80,7 @@ export async function POST(request:Request) {
       data:{title,type,client:{connectOrCreate:{where:{name:client},create:{name:client}}},
         ...(project?{project:{connect:{id:project.id}}}:{}),
         ...(template?{template:{connect:{id:template.id}},templateSnapshot}:{}),
-        events:{create:{action:"AUDIT_CREATED",actor:process.env.SURFACE_AUDIT_ADMIN_USERNAME!,
+        events:{create:{action:"AUDIT_CREATED",actor:(await getSession(request))!.username,
           details:{source:"local-ui",projectId:projectId??null,templateId:templateId??null,templateRevision:template?.revision??null}}}},
       include:{client:true,record:true,project:true}
     });
