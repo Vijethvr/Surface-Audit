@@ -4,7 +4,7 @@ import {requireLocalPrototype} from "@/lib/dev-api";
 import {evidenceDigest,safeFilename} from "@/lib/evidence-vault";
 export const runtime="nodejs";export const dynamic="force-dynamic";
 export async function GET(request:Request,ctx:{params:Promise<{id:string;assetId:string}>}){
- const denial=requireLocalPrototype(request);if(denial)return denial;
+ const denial=await requireLocalPrototype(request);if(denial)return denial;
  const {id,assetId}=await ctx.params;
  const asset=await prisma.evidenceAsset.findFirst({where:{id:assetId,auditId:id}});
  if(!asset)return NextResponse.json({error:"Evidence not found"},{status:404});
