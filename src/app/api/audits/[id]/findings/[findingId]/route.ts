@@ -1,3 +1,4 @@
+import {getSession} from "@/lib/local-auth";
 import {requireEditableAudit} from "@/lib/require-editable-audit";
 import {NextResponse} from "next/server";
 import {z} from "zod";import {prisma} from "@/lib/db";import {requireLocalPrototype} from "@/lib/dev-api";
@@ -14,7 +15,7 @@ export async function PATCH(request:Request,ctx:{params:Promise<{id:string;findi
  return NextResponse.json({error:"Closure requires all corrective actions verified"},{status:409});
  const finding=await prisma.$transaction(async tx=>{
   const item=await tx.finding.update({where:{id:findingId},data:{status:parsed.data.status}});
-  await tx.auditEvent.create({data:{auditId:id,actor:process.env.SURFACE_AUDIT_ADMIN_USERNAME!,action:"FINDING_STATUS_CHANGED",details:{findingId,status:item.status}}});return item;
+  await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"FINDING_STATUS_CHANGED",details:{findingId,status:item.status}}});return item;
  });
  return NextResponse.json({finding});
 }
