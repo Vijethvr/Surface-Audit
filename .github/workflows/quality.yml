@@ -100,7 +100,7 @@ jobs:
           for tool in pg_dump pg_restore psql; do
             cat > "/tmp/surface-audit-pg16-tools/$tool" <<'WRAPPER'
           #!/usr/bin/env bash
-          exec docker run --rm --network host -e PGPASSWORD -e PGOPTIONS -e PGCONNECT_TIMEOUT -v /tmp:/tmp postgres:16 "$(basename "$0")" "$@"
+          exec docker run --rm --network host --user "$(id -u):$(id -g)" -e PGPASSWORD -e PGOPTIONS -e PGCONNECT_TIMEOUT -v /tmp:/tmp postgres:16 "$(basename "$0")" "$@"
           WRAPPER
             chmod +x "/tmp/surface-audit-pg16-tools/$tool"
           done
