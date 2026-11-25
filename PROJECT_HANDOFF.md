@@ -48,20 +48,20 @@ The demo-browser storage mode exists separately. Database mode is a local-develo
 | v1.3 | Account lockout, content-bound review, versioned migration baseline | #15 |
 | v1.4 | Audit optimistic revisions, concurrent-write coordination, migration inspector | #16 |
 | v1.5 | Local backup and restore drill, append-only database history triggers | #17 |
-| **v1.6** | **Encrypted local recovery package + safe local configuration preflight + continuity document** | **Pending PR; verify current status** |
+| **v1.6** | **Encrypted local recovery package + safe local configuration preflight + continuity document** | **#18, ready for review; not merged at handoff date** |
 
 As of the start of v1.6, the v1.5 migration file and recovery tool were confirmed on `main`. Verify v1.6 and any later merges afresh.
 
 ## 5. v1.6 in progress — review before further work
 
-Branch `feat/encrypted-recovery-preflight-v1.6` targeting `main`, files added:
+Branch `feat/encrypted-recovery-preflight-v1.6` targeting `main`; **PR #18**: https://github.com/Vijethvr/Surface-Audit/pull/18. Its full development/recovery CI run **#45703071441 succeeded** and the PR was marked ready for review. **The user has not yet confirmed a merge in this conversation.** Files added:
 
 - `scripts/secure-backup.mjs`: AES-256-GCM/scrypt encrypted **package** for previously created local PostgreSQL backup and manifest; separate output directories, nonoverwriting, passphrase from `SURFACE_AUDIT_BACKUP_PASSPHRASE`; decrypt to a new plaintext directory for existing restore flow. **Never deletes plaintext automatically.** Up to 256 MiB; not a production backup service.
 - `scripts/local-preflight.mjs`: read-only local config safety gate; requires Node 22, dev mode, PostgreSQL mode, loopback DB, defined credentials, loopback bind host. Does not itself launch the server or guarantee firewall safety.
 - CI integration: encrypted round-trip, wrong-passphrase and tamper rejection; unsafe wildcard bind rejection; existing restore drill unchanged.
 - This `PROJECT_HANDOFF.md` and a user-downloadable .docx handoff companion.
 
-**Important:** Before describing v1.6 as complete, verify final GitHub Actions jobs are green and the PR is marked ready, or clearly state any pending tests. Update this section after merged.
+**Important:** The prior CI run #45703071441 passed both jobs; changes to this handoff file may trigger a newer final-commit run. Always verify the latest commit and CI before merging, and confirm merged status on `main` in the next chat.
 
 ## 6. Windows developer environment
 
