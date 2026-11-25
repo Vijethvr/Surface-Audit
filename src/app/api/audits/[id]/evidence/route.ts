@@ -1,3 +1,4 @@
+import {getSession} from "@/lib/local-auth";
 import {requireEditableAudit} from "@/lib/require-editable-audit";
 import {NextResponse} from "next/server";
 import {z} from "zod";import {prisma} from "@/lib/db";import {requireLocalPrototype} from "@/lib/dev-api";import {requirementCodes} from "@/lib/audit-requirements";
@@ -18,7 +19,7 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
  if(!codes.has(parsed.data.requirementCode))return NextResponse.json({error:"Requirement not in audit"},{status:400});
  const evidence=await prisma.$transaction(async tx=>{
  const item=await tx.evidenceReference.create({data:{auditId:id,...parsed.data}});
- await tx.auditEvent.create({data:{auditId:id,actor:process.env.SURFACE_AUDIT_ADMIN_USERNAME!,action:"EVIDENCE_REFERENCE_ADDED",details:{evidenceId:item.id,requirementCode:item.requirementCode}}});return item;
+ await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"EVIDENCE_REFERENCE_ADDED",details:{evidenceId:item.id,requirementCode:item.requirementCode}}});return item;
  });
  return NextResponse.json({evidence},{status:201});
 }
