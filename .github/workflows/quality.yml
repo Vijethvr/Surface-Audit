@@ -37,6 +37,12 @@ jobs:
         run: npx prisma validate
       - name: Generate Prisma client
         run: npm run db:generate
+      - name: Preview baseline migration SQL for versioned history
+        run: |
+          npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > /tmp/surface-audit-baseline.sql
+          echo "__BEGIN_SURFACE_SQL__"
+          cat /tmp/surface-audit-baseline.sql
+          echo "__END_SURFACE_SQL__"
       - name: Typecheck
         run: npm run lint
       - name: Production build
