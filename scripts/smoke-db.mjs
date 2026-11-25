@@ -493,8 +493,9 @@ try {
   const managementCsv=await fetch(base+"/api/operations/management/export?format=csv",{headers:{Cookie:sessionCookie}});
   assert.equal(managementCsv.status,200);
   assert.ok((managementCsv.headers.get("content-type")||"").includes("text/csv"));
-  const csvText=await managementCsv.text();
-  assert.equal(csvText.charCodeAt(0),0xFEFF);
+  const csvBytes=new Uint8Array(await managementCsv.arrayBuffer());
+  assert.deepEqual(Array.from(csvBytes.slice(0,3)),[0xEF,0xBB,0xBF]);
+  const csvText=Buffer.from(csvBytes).toString("utf8");
   assert.match(csvText,/overdueActions/);
   const dossierResponse=await fetch(base+"/api/audits/"+encodeURIComponent(engagementId)+"/dossier",{headers:{Cookie:sessionCookie}});
   assert.equal(dossierResponse.status,200);
