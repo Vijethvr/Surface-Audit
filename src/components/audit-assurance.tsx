@@ -1,6 +1,7 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useState} from "react";
 import {AlertTriangle,ClipboardCheck,FileCheck2,RefreshCw} from "lucide-react";
+import EvidenceVault from "@/components/evidence-vault";
 
 type Requirement={id:string;title:string};
 type Action={id:string;description:string;owner:string;dueDate:string|null;status:"OPEN"|"IN_PROGRESS"|"COMPLETED"|"VERIFIED";closureEvidence:string|null;verifiedBy:string|null};
@@ -114,6 +115,7 @@ export default function AuditAssurance({auditId,requirements}:{auditId:string;re
       </div></div>)}
     <small className="assurance-guard">A finding can be closed only after at least one action is verified, and every action has verification details.</small>
    </article>)}
+   <EvidenceVault auditId={auditId} requirements={requirements}/>
    <h3>Evidence references ({evidence.length})</h3>
    {evidence.length===0?<p className="registry-empty">No evidence references added.</p>:<div className="registry-items">{evidence.map(e=><article key={e.id}><b>{e.requirementCode} · {e.reference}</b><small>{e.description||"Reference only — not an uploaded or approved document"}</small></article>)}</div>}
   </div>
