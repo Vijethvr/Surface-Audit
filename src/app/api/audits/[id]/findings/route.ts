@@ -1,3 +1,4 @@
+import {getSession} from "@/lib/local-auth";
 import {requireEditableAudit} from "@/lib/require-editable-audit";
 import {NextResponse} from "next/server";
 import {z} from "zod";
@@ -23,7 +24,7 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
  if(!codes.has(parsed.data.requirementCode))return NextResponse.json({error:"Requirement not in audit"},{status:400});
  const finding=await prisma.$transaction(async tx=>{
   const item=await tx.finding.create({data:{auditId:id,...parsed.data}});
-  await tx.auditEvent.create({data:{auditId:id,actor:process.env.SURFACE_AUDIT_ADMIN_USERNAME!,action:"FINDING_CREATED",details:{findingId:item.id,requirementCode:item.requirementCode,severity:item.severity}}});
+  await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"FINDING_CREATED",details:{findingId:item.id,requirementCode:item.requirementCode,severity:item.severity}}});
   return item;
  });
  return NextResponse.json({finding},{status:201});
