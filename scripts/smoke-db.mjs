@@ -220,7 +220,9 @@ try {
   const root="/api/audits/"+encodeURIComponent(engagementId)+"/findings/"+encodeURIComponent(findingId);
   const blockedCompletion=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({status:"Completed"})});
   assert.equal(blockedCompletion.response.status,409);
-  assert.ok(blockedCompletion.body.blockers.some(reason=>reason.includes("Finding")));
+  assert.match(blockedCompletion.body.error,/In review|approval/);
+  const pendingReport=await request("/api/audits/"+encodeURIComponent(engagementId)+"/report");
+  assert.ok(pendingReport.body.report.readiness.blockers.some(reason=>reason.includes("Finding")));
   const closeEarly=await request(root,{method:"PATCH",body:JSON.stringify({status:"CLOSED"})});
   assert.equal(closeEarly.response.status,409);
   const actionCreated=await request(root+"/actions",{method:"POST",body:JSON.stringify({
