@@ -68,7 +68,7 @@ export async function PATCH(request:Request,context:{params:Promise<{id:string}>
       if(parsed.data.status)await tx.audit.update({where:{id},data:{status:dbStatus[parsed.data.status]}});
       if(sealingReport)await tx.auditReportSnapshot.create({data:{auditId:id,report:sealingReport,sha256:reportDigest(sealingReport)}});
       if(parsed.data.record)await tx.auditRecord.upsert({
-        where:{auditId:id},create:{auditId:id,content:parsed.data.record},update:{content:parsed.data.record}
+        where:{auditId:id},create:{auditId:id,content:parsed.data.record,preparedBy:(await getSession(request))!.username},update:{content:parsed.data.record,preparedBy:(await getSession(request))!.username}
       });
       await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:parsed.data.status==="Completed"?"AUDIT_SEALED":"AUDIT_UPDATED",details:{status:parsed.data.status??null,recordUpdated:Boolean(parsed.data.record)}}});
     });

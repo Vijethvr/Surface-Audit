@@ -339,6 +339,22 @@ try {
   assert.equal(approved.response.status,201,JSON.stringify(approved.body));
   assert.equal((await request(reviewRoot)).body.current,true);
   sessionCookie=adminCookie;
+  // A direct database modification without an audit event must also invalidate the
+  // content-bound reviewer approval. Restore it afterward for the normal lifecycle.
+  const {PrismaClient}=await import("@prisma/client");
+  const tamperDb=new PrismaClient();
+  try{
+   const original=await tamperDb.auditRecord.findUnique({where:{auditId:engagementId}});
+   assert.ok(original);
+   const originalContent=structuredClone(original.content);
+   await tamperDb.auditRecord.update({where:{auditId:engagementId},data:{
+    content:{...originalContent,summary:"Changed without an audit event"}
+   }});
+   assert.equal((await request(reviewRoot)).body.current,false,
+     "Approval digest must reject unlogged assessment changes");
+   await tamperDb.auditRecord.update({where:{auditId:engagementId},data:{content:originalContent}});
+   assert.equal((await request(reviewRoot)).body.current,true);
+  }finally{await tamperDb.$disconnect()}
   // Editing an assessment after independent approval must invalidate the approval.
   const changedAfterReview=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({record:{...custom,summary:"Summary amended after reviewer approval"}})});
   assert.equal(changedAfterReview.response.status,200);
@@ -352,6 +368,24 @@ try {
   const adminUsers=await request("/api/operators");
   assert.equal(adminUsers.response.status,200);
   assert.ok(adminUsers.body.operators.some(user=>user.username==="ci-viewer"&&user.role==="VIEWER"));
+  // v1.3: repeated failed sign-ins lock an account until an administrator resets it.
+  for(let n=0;n<5;n++){
+   const wrong=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username:"ci-editor",password:"incorrect-password-"+n})});
+   assert.equal(wrong.response.status,401);
+  }
+  const locked=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username:"ci-editor",password:"CI-password-only-not-for-real-users"})});
+  assert.equal(locked.response.status,401,"Correct password must not bypass temporary lockout");
+  const editorAccount=adminUsers.body.operators.find(row=>row.username==="ci-editor");
+  const lockedListing=await request("/api/operators");
+  const lockedEditor=lockedListing.body.operators.find(row=>row.username==="ci-editor");
+  assert.ok(lockedEditor.loginLockedUntil);
+  assert.ok(lockedEditor.failedLoginCount>=5);
+  const unlock=await request("/api/operators",{method:"PATCH",body:JSON.stringify({id:editorAccount.id,resetLockout:true})});
+  assert.equal(unlock.response.status,200,JSON.stringify(unlock.body));
+  const unblocked=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username:"ci-editor",password:"CI-password-only-not-for-real-users"})});
+  assert.equal(unblocked.response.status,200);
+  // Admin session stays in effect: a newly issued editor cookie does not replace it.
+  sessionCookie=adminCookie;
   // Deactivation revokes an existing viewer session in the database.
   const viewerId=adminUsers.body.operators.find(user=>user.username==="ci-viewer").id;
   const deactivate=await request("/api/operators",{method:"PATCH",body:JSON.stringify({id:viewerId,active:false})});
