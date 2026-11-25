@@ -1,3 +1,4 @@
+import {getSession} from "@/lib/local-auth";
 import {NextResponse} from "next/server";
 import {prisma} from "@/lib/db";
 import {requireLocalPrototype} from "@/lib/dev-api";
@@ -35,9 +36,9 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
   if(!audit||audit.status==="COMPLETED")return null;
   const count=await tx.evidenceAsset.count({where:{auditId:id}});
   if(count>=maxEvidencePerAudit)return null;
-  const asset=await tx.evidenceAsset.create({data:{auditId:id,requirementCode,filename,mimeType:file.type,sizeBytes:bytes.length,sha256:evidenceDigest(bytes),bytes,uploadedBy:process.env.SURFACE_AUDIT_ADMIN_USERNAME!},
+  const asset=await tx.evidenceAsset.create({data:{auditId:id,requirementCode,filename,mimeType:file.type,sizeBytes:bytes.length,sha256:evidenceDigest(bytes),bytes,uploadedBy:(await getSession(request))!.username},
    select:{id:true,requirementCode:true,filename:true,mimeType:true,sizeBytes:true,sha256:true,uploadedBy:true,createdAt:true}});
-  await tx.auditEvent.create({data:{auditId:id,actor:process.env.SURFACE_AUDIT_ADMIN_USERNAME!,action:"EVIDENCE_FILE_ADDED",details:{assetId:asset.id,requirementCode,filename,sha256:asset.sha256,sizeBytes:asset.sizeBytes}}});
+  await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"EVIDENCE_FILE_ADDED",details:{assetId:asset.id,requirementCode,filename,sha256:asset.sha256,sizeBytes:asset.sizeBytes}}});
   return asset;
  });
  if(!result)return NextResponse.json({error:"Audit sealed or evidence limit reached"},{status:409});
