@@ -12,6 +12,7 @@ try{
  await prisma.$executeRawUnsafe("GRANT CONNECT ON DATABASE surface_audit_ci TO surfaceaudit_app_ci");
  await prisma.$executeRawUnsafe("GRANT USAGE ON SCHEMA public TO surfaceaudit_app_ci");
  await prisma.$executeRawUnsafe("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO surfaceaudit_app_ci");
+ await prisma.$executeRawUnsafe('REVOKE INSERT, UPDATE, DELETE ON TABLE "_prisma_migrations" FROM surfaceaudit_app_ci');
  const result=await prisma.$queryRaw`SELECT rolcreatedb, rolcreaterole, rolsuper FROM pg_roles WHERE rolname='surfaceaudit_app_ci'`;
  if(result.length!==1||result[0].rolcreatedb||result[0].rolcreaterole||result[0].rolsuper)
   throw Error("Runtime role privilege assertion failed");
