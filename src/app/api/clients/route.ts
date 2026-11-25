@@ -6,12 +6,12 @@ export const runtime="nodejs";
 export const dynamic="force-dynamic";
 const input=z.object({name:z.string().trim().min(2).max(160)});
 export async function GET(request:Request){
- const denial=requireLocalPrototype(request);if(denial)return denial;
+ const denial=await requireLocalPrototype(request);if(denial)return denial;
  const clients=await prisma.client.findMany({orderBy:{name:"asc"},select:{id:true,name:true,_count:{select:{audits:true,projects:true}}}});
  return NextResponse.json({clients},{headers:{"Cache-Control":"no-store"}});
 }
 export async function POST(request:Request){
- const denial=requireLocalPrototype(request);if(denial)return denial;
+ const denial=await requireLocalPrototype(request);if(denial)return denial;
  const parsed=input.safeParse(await request.json().catch(()=>null));
  if(!parsed.success)return NextResponse.json({error:"Invalid client name"},{status:400});
  const existing=await prisma.client.findUnique({where:{name:parsed.data.name}});
