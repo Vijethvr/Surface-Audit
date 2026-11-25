@@ -185,7 +185,7 @@ node scripts/create-local-operator.mjs auditor EDITOR
 node scripts/create-local-operator.mjs reviewer REVIEWER
 node scripts/create-local-operator.mjs observer VIEWER
 ```
-Set `SURFACE_AUDIT_ENABLE_LOCAL_API=true` in the **shell environment** too when using the CLI script; `.env.local` is not automatically read by a standalone Node script. Never commit passwords. The older `SURFACE_AUDIT_ADMIN_USERNAME`, `SURFACE_AUDIT_ADMIN_PASSWORD_SCRYPT` and `SURFACE_AUDIT_SESSION_SECRET` variables are no longer used by the new local login.
+In v1.3, the CLI operator-creation script reads the project-root `.env.local` on Node 22; earlier v1.2 setup instructions requiring duplicate shell configuration are superseded. Never commit passwords. The older `SURFACE_AUDIT_ADMIN_USERNAME`, `SURFACE_AUDIT_ADMIN_PASSWORD_SCRYPT` and `SURFACE_AUDIT_SESSION_SECRET` variables are no longer used by the new local login.
 
 **Important limits:** This is role separation within a **local development prototype**, not a production identity system. There is still no tested production migration history, MFA, rate limiting, centralized identity, trustworthy audit-signature service, robust transaction isolation for concurrent reviewer/editor changes, or independent external timestamping. A local DB administrator can still alter review or history data. Review approval is a development workflow decision, **not a regulatory signature or calibration approval**. Do not expose the application publicly or enter confidential customer data.
 
@@ -214,7 +214,7 @@ node scripts/create-local-operator.mjs reviewer REVIEWER
 npm run dev -- -p 3001
 ```
 
-On Windows, the standalone operator-creation script requires `SURFACE_AUDIT_ENABLE_LOCAL_API=true` **in the command shell** as well; Next.js `.env.local` is not automatically loaded by that standalone script. Never commit passwords or actual client records.
+The operator-creation script now reads a project-root `.env.local` on Node 22. Ensure `DATABASE_URL` and `SURFACE_AUDIT_ENABLE_LOCAL_API=true` are set there before running it. The project must use a disposable local database. Never commit passwords or actual client records.
 
 ### Existing local databases require a separate decision
 
