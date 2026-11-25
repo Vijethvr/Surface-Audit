@@ -24,7 +24,7 @@ const update=z.object({status:status.optional(),record:record.optional()}).refin
 const dbStatus={"Scheduled":"SCHEDULED","In progress":"IN_PROGRESS","In review":"IN_REVIEW","Completed":"COMPLETED"} as const;
 
 export async function GET(_request:Request,context:{params:Promise<{id:string}>}) {
-  const denied=requireLocalPrototype(_request);if(denied)return denied;
+  const denied=await requireLocalPrototype(_request);if(denied)return denied;
   const {id}=await context.params;
   try {
     const audit=await prisma.audit.findUnique({where:{id},include:{record:true,project:true,equipmentLinks:{include:{equipment:true}}}});
@@ -34,7 +34,7 @@ export async function GET(_request:Request,context:{params:Promise<{id:string}>}
 }
 
 export async function PATCH(request:Request,context:{params:Promise<{id:string}>}) {
-  const denied=requireLocalPrototype(request);if(denied)return denied;
+  const denied=await requireLocalPrototype(request);if(denied)return denied;
   const {id}=await context.params;
   let payload:unknown;
   try{payload=await request.json();}catch{return NextResponse.json({error:"Invalid JSON body"},{status:400});}
