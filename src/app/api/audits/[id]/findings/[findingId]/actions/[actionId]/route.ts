@@ -1,3 +1,4 @@
+import {getSession} from "@/lib/local-auth";
 import {requireEditableAudit} from "@/lib/require-editable-audit";
 import {NextResponse} from "next/server";
 import {z} from "zod";import {prisma} from "@/lib/db";import {requireLocalPrototype} from "@/lib/dev-api";
@@ -16,7 +17,7 @@ export async function PATCH(request:Request,ctx:{params:Promise<{id:string;findi
  if(parsed.data.status==="VERIFIED"&&(!evidence.trim()||!verifier.trim()))return NextResponse.json({error:"Verifier and closure evidence required"},{status:400});
  const action=await prisma.$transaction(async tx=>{
  const item=await tx.correctiveAction.update({where:{id:actionId},data:{status:parsed.data.status,closureEvidence:evidence||null,verifiedBy:parsed.data.status==="VERIFIED"?verifier:null,verifiedAt:parsed.data.status==="VERIFIED"?new Date():null}});
- await tx.auditEvent.create({data:{auditId:id,actor:process.env.SURFACE_AUDIT_ADMIN_USERNAME!,action:"CAPA_STATUS_CHANGED",details:{findingId,actionId,status:item.status,reference:item.closureEvidence}}});return item;
+ await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"CAPA_STATUS_CHANGED",details:{findingId,actionId,status:item.status,reference:item.closureEvidence}}});return item;
  });
  return NextResponse.json({action});
 }
