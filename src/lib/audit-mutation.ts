@@ -1,4 +1,5 @@
 import type {Prisma} from "@prisma/client";
+import {prisma} from "@/lib/db";
 
 // Lock the audit row as the first statement in a mutation transaction.
 // PostgreSQL row-level update serialization ensures completed audits cannot
@@ -12,4 +13,11 @@ export async function claimAuditMutation(tx:Prisma.TransactionClient,auditId:str
 }
 export function auditMutationConflict(error:unknown){
  return error instanceof Error&&error.message==="AUDIT_MUTATION_BLOCKED";
+}
+
+export async function guardedAuditTransaction<T>(auditId:string,callback:(tx:Prisma.TransactionClient)=>Promise<T>){
+ return prisma.$transaction(async tx=>{
+  await claimAuditMutation(tx,auditId);
+  return callback(tx);
+ });
 }
