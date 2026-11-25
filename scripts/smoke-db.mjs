@@ -68,6 +68,7 @@ try {
    assert.equal(rows[0].username,"surfaceaudit_app_ci");
    assert.equal(rows[0].can_create,false);
    await assert.rejects(runtimeDb.$executeRawUnsafe('CREATE TABLE "ci_forbidden_runtime_ddl" (id INTEGER)'),/permission denied|P2010/i);
+   await assert.rejects(runtimeDb.$executeRawUnsafe('DELETE FROM "_prisma_migrations"'),/permission denied|P2010/i);
   }finally{await runtimeDb.$disconnect()}
   const loginEvents=await request("/api/security/events");
   assert.equal(loginEvents.response.status,200);
