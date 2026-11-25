@@ -35,6 +35,7 @@ export default function OperationsCenter({mode,onOpenAudit}:{mode:Mode;onOpenAud
   {error&&<p className="storage-error" role="alert">{error} · <a href="/login">Sign in to local storage</a></p>}
   {loading&&<p role="status" className="ops-loading">Loading portfolio…</p>}
   {data&&<>
+   {mode==="overview"&&<div className="management-entry"><div><strong>Management review · portfolio delivery and risk</strong><p>Live sampled KPIs, client risk triage, overdue-action aging, printable review and downloadable risk exports.</p></div><a href="/management">Open management review</a></div>}
    <div className="ops-metrics">
     {[
      {title:"Audits",value:counters!.audits,icon:ClipboardCheck},
