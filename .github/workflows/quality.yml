@@ -94,6 +94,10 @@ jobs:
         run: node scripts/seed-ci-operators.mjs
       - name: Provision least-privilege PostgreSQL runtime account
         run: node scripts/ci-provision-runtime-role.mjs
+      - name: Verify restricted runtime PostgreSQL permissions
+        env:
+          DATABASE_URL: postgresql://surfaceaudit_app_ci:ci_only_app_password@127.0.0.1:5432/surface_audit_ci?schema=public
+        run: node scripts/check-db-privileges.mjs
       - name: Validate audit persistence over HTTP under restricted DB account
         env:
           DATABASE_URL: postgresql://surfaceaudit_app_ci:ci_only_app_password@127.0.0.1:5432/surface_audit_ci?schema=public
