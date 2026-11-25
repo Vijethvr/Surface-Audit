@@ -262,6 +262,45 @@ try {
   assert.ok((await csvExport.text()).includes("CERT-"+unique));
   const invalidExport=await request("/api/operations/export?type=unsupported");
   assert.equal(invalidExport.response.status,400);
+  // v1.1: evidence file custody, safe downloads and integrity checks.
+  const assetRoot="/api/audits/"+encodeURIComponent(engagementId)+"/assets";
+  const pdfBytes=Buffer.from("%PDF-1.4\\n1 0 obj\\n<<>>\\nendobj\\n%%EOF\\n","utf8");
+  async function uploadEvidence(bytes,mime,requirement="REQ-01",filename="CI-evidence.pdf"){
+    const form=new FormData();
+    form.append("requirementCode",requirement);
+    form.append("file",new Blob([bytes],{type:mime}),filename);
+    const response=await fetch(base+assetRoot,{
+      method:"POST",headers:{Cookie:sessionCookie,Origin:base},body:form,signal:AbortSignal.timeout(20000)
+    });
+    return {response,body:await response.json()};
+  }
+  const invalidFile=await uploadEvidence(Buffer.from("not a pdf"),"application/pdf");
+  assert.equal(invalidFile.response.status,415);
+  const wrongRequirement=await uploadEvidence(pdfBytes,"application/pdf","REQ-99");
+  assert.equal(wrongRequirement.response.status,400);
+  const oversized=await uploadEvidence(Buffer.alloc(1024*1024+1,65),"application/pdf");
+  assert.equal(oversized.response.status,413);
+  const uploaded=await uploadEvidence(pdfBytes,"application/pdf");
+  assert.equal(uploaded.response.status,201,JSON.stringify(uploaded.body));
+  const assetId=uploaded.body.asset.id;
+  assert.match(uploaded.body.asset.sha256,/^[a-f0-9]{64}$/);
+  assert.equal(uploaded.body.asset.requirementCode,"REQ-01");
+  const files=await request(assetRoot);
+  assert.equal(files.response.status,200);
+  assert.equal(files.body.assets[0].id,assetId);
+  const assetResponse=await fetch(base+assetRoot+"/"+encodeURIComponent(assetId),{headers:{Cookie:sessionCookie}});
+  assert.equal(assetResponse.status,200);
+  assert.equal(assetResponse.headers.get("content-type"),"application/octet-stream");
+  assert.ok(assetResponse.headers.get("content-disposition")?.includes("attachment"));
+  assert.deepEqual(Buffer.from(await assetResponse.arrayBuffer()),pdfBytes);
+  const unauthedFile=await fetch(base+assetRoot+"/"+encodeURIComponent(assetId));
+  assert.equal(unauthedFile.status,401);
+  const bogusFile=await request(assetRoot+"/unknown");
+  assert.equal(bogusFile.response.status,404);
+  const updatedDraft=await request("/api/audits/"+encodeURIComponent(engagementId)+"/report");
+  assert.equal(updatedDraft.response.status,200);
+  assert.equal(updatedDraft.body.report.requirements[0].evidenceFiles[0].sha256,uploaded.body.asset.sha256);
+
   const completion=await request("/api/audits/"+encodeURIComponent(engagementId),{
     method:"PATCH",body:JSON.stringify({status:"Completed"})
   });
@@ -274,6 +313,9 @@ try {
   assert.match(sealedReport.body.integrity.sha256,/^[a-f0-9]{64}$/);
   assert.equal(sealedReport.body.report.audit.status,"COMPLETED");
   assert.ok(sealedReport.body.report.requirements[0].evidenceReferences.some(e=>e.reference==="CERT-"+unique));
+  assert.equal(sealedReport.body.report.requirements[0].evidenceFiles[0].sha256,uploaded.body.asset.sha256);
+  const blockedUpload=await uploadEvidence(pdfBytes,"application/pdf");
+  assert.equal(blockedUpload.response.status,409);
   const blockedEdit=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({record:custom})});
   assert.equal(blockedEdit.response.status,409);
   const blockedEquipment=await request("/api/audits/"+encodeURIComponent(engagementId)+"/equipment",{method:"PUT",body:JSON.stringify({equipmentIds:[]})});
@@ -287,8 +329,8 @@ try {
   const listedFindings=await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings");
   assert.equal(listedFindings.body.findings[0].actions[0].verifiedBy,"Second reviewer");
   const historyV7=await request("/api/audits/"+encodeURIComponent(engagementId)+"/events");
-  assert.deepEqual(historyV7.body.events.map(e=>e.action).slice(-6),[
-    "EVIDENCE_REFERENCE_ADDED","FINDING_CREATED","CAPA_CREATED","CAPA_STATUS_CHANGED","FINDING_STATUS_CHANGED","AUDIT_UPDATED"
+  assert.deepEqual(historyV7.body.events.map(e=>e.action).slice(-7),[
+    "EVIDENCE_REFERENCE_ADDED","FINDING_CREATED","CAPA_CREATED","CAPA_STATUS_CHANGED","FINDING_STATUS_CHANGED","EVIDENCE_FILE_ADDED","AUDIT_UPDATED"
   ]);
 
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
@@ -304,6 +346,7 @@ try {
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/report")).response.status,401);
   assert.equal((await request("/api/operations")).response.status,401);
   assert.equal((await request("/api/operations/export?type=audits")).response.status,401);
+  assert.equal((await request(assetRoot)).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
   child.kill("SIGTERM");
