@@ -92,7 +92,11 @@ jobs:
         run: node scripts/inspect-local-db.mjs
       - name: Seed test-only operators and roles
         run: node scripts/seed-ci-operators.mjs
-      - name: Validate audit persistence over HTTP
+      - name: Provision least-privilege PostgreSQL runtime account
+        run: node scripts/ci-provision-runtime-role.mjs
+      - name: Validate audit persistence over HTTP under restricted DB account
+        env:
+          DATABASE_URL: postgresql://surfaceaudit_app_ci:ci_only_app_password@127.0.0.1:5432/surface_audit_ci?schema=public
         run: node scripts/smoke-db.mjs
       - name: Verify offline Ed25519 dossier signatures and reject forged exports
         run: node scripts/test-dossier-signatures.mjs /tmp/surface-audit-ci-sealed-dossier.json
