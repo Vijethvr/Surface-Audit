@@ -1,3 +1,4 @@
+import {auditMutationConflict} from "@/lib/audit-mutation";
 import {guardedAuditTransaction} from "@/lib/audit-mutation";
 import {getSession} from "@/lib/local-auth";
 import {requireEditableAudit} from "@/lib/require-editable-audit";
@@ -18,9 +19,13 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
  const sealed=await requireEditableAudit(id);if(sealed)return sealed;
  const codes=await requirementCodes(id);if(!codes)return NextResponse.json({error:"Audit not found"},{status:404});
  if(!codes.has(parsed.data.requirementCode))return NextResponse.json({error:"Requirement not in audit"},{status:400});
- const evidence=await guardedAuditTransaction(id,async tx=>{
+ let evidence;try{evidence=await guardedAuditTransaction(id,async tx=>{
  const item=await tx.evidenceReference.create({data:{auditId:id,...parsed.data}});
  await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"EVIDENCE_REFERENCE_ADDED",details:{evidenceId:item.id,requirementCode:item.requirementCode}}});return item;
- });
+ }); }catch(error){
+  if(auditMutationConflict(error))return NextResponse.json({error:"Audit has been sealed; reload before changing records"},{status:409});
+  throw error;
+ }
+ 
  return NextResponse.json({evidence},{status:201});
 }
