@@ -1,6 +1,6 @@
 # SURFACE Audit — Project Handoff for a New Chat
 
-**Status date:** 25 November 2026 (Europe/Stockholm).  
+**Status date:** 25 November 2026 (Europe/Stockholm) — v1.7 development branch snapshot.  
 **Canonical repository:** https://github.com/Vijethvr/Surface-Audit  
 **Default branch:** `main`  
 **Purpose:** Long-term continuity between ChatGPT conversations. **Always check live GitHub status and code before acting; this handoff is a dated snapshot, not live state.**
@@ -48,7 +48,7 @@ The demo-browser storage mode exists separately. Database mode is a local-develo
 | v1.3 | Account lockout, content-bound review, versioned migration baseline | #15 |
 | v1.4 | Audit optimistic revisions, concurrent-write coordination, migration inspector | #16 |
 | v1.5 | Local backup and restore drill, append-only database history triggers | #17 |
-| **v1.6** | **Encrypted local recovery package + safe local configuration preflight + continuity document** | **#18, ready for review; not merged at handoff date** |
+| **v1.6** | **Encrypted local recovery package + safe local configuration preflight + continuity document** | **#18, verified present on main at start of v1.7** |\n| **v1.7** | **Offline independently verifiable Ed25519 signed sealed audit dossiers** | **New development PR; verify status and final CI before merging** |
 
 As of the start of v1.6, the v1.5 migration file and recovery tool were confirmed on `main`. Verify v1.6 and any later merges afresh.
 
@@ -62,6 +62,14 @@ Branch `feat/encrypted-recovery-preflight-v1.6` targeting `main`; **PR #18**: ht
 - This `PROJECT_HANDOFF.md` and a user-downloadable .docx handoff companion.
 
 **Important:** The prior CI run #45703071441 passed both jobs; changes to this handoff file may trigger a newer final-commit run. Always verify the latest commit and CI before merging, and confirm merged status on `main` in the next chat.
+
+## 5A. v1.7 offline dossier signatures (new milestone)
+
+Current branch: `feat/offline-signed-dossiers-v1.7` targeting `main`. The new `scripts/dossier-signature.mjs` implements key-pair generation, signing and offline public-key verification of **sealed** audit dossiers using Node 22's Ed25519 cryptography; `scripts/test-dossier-signatures.mjs` supplies negative tests on a real exported PostgreSQL dossier. The signing private key is stored as password-encrypted PKCS#8 **outside the repo**, and recipients must trust a separately distributed public key. The signer label and timestamp are signed but **not independently authenticated**. README includes Windows commands. The report view points to the offline workflow. No digital key operations occur on the app server or through the API.
+
+**Before treating v1.7 as complete:** verify the new PR, latest final commit, both GitHub Actions jobs, and merge status. The CI test must verify wrong keys/passphrase, changed report including recomputed hashes, altered evidence, metadata tamper, unsigned draft and overwrite rejection. This is **not** an accredited electronic signature, certificate authority, trusted timestamp, external record archive or attested author identity.
+
+The prior downloadable Word handoff dated 2026-11-25 is a historical snapshot. This repository file is the **more current, maintained** handoff and should take precedence in new threads.
 
 ## 6. Windows developer environment
 
@@ -100,10 +108,10 @@ Check the latest PR, `main` and workflow runs before saying a milestone is compl
 
 ## 9. Prioritized substantial next steps
 
-1. **v1.6 acceptance:** validate encrypted package and preflight tests, fix failures, prepare PR and handoff files.
+1. **v1.7 acceptance:** validate signed dossier CLI against real sealed audit fixtures, fix failures and complete PR review after both final CI jobs pass.
 2. **Security assessment:** automated local attack-boundary tests, database access restrictions, authentication response timing/concurrency, session protections and dependency patch management.
 3. **Backup operations:** secure passphrase management, offsite encrypted archival with restore drill, retention and cleanup policy, recovery objectives and a deployment runbook.
-4. **Independent evidentiary integrity:** externally anchored signed record manifests, independently verifiable report approvals and trusted timestamp integration.
+4. **Independent evidentiary integrity:** v1.7 adds separately keyed signatures; a trusted key registry, revocation process, certified signing authority and external timestamp integration remain to implement.
 5. **Production architecture decision:** threat model, hosting/deployment plan, migration/rollback drills, secure file scanning/storage and external security review before any client data.
 
 These are recommendations, not implemented capabilities.
