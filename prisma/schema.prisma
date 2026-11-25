@@ -59,6 +59,7 @@ model AuditRecord {
   audit     Audit    @relation(fields: [auditId], references: [id], onDelete: Cascade)
   // JSON is temporary v0.3 storage. Normalized requirements and evidence follow in v0.4.
   content   Json
+  preparedBy String?
   updatedAt DateTime @updatedAt
 }
 
@@ -226,6 +227,9 @@ model Operator {
   passwordHash String
   role OperatorRole
   active Boolean @default(true)
+  failedLoginCount Int @default(0)
+  lastFailedLoginAt DateTime?
+  loginLockedUntil DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   sessions OperatorSession[]
@@ -246,6 +250,7 @@ model AuditReview {
   reviewerId String
   reviewerName String
   decision ReviewDecision
+  reportDigest String?
   note String
   reviewedAt DateTime @default(now())
   @@index([auditId, reviewedAt])
