@@ -352,6 +352,24 @@ try {
   const adminUsers=await request("/api/operators");
   assert.equal(adminUsers.response.status,200);
   assert.ok(adminUsers.body.operators.some(user=>user.username==="ci-viewer"&&user.role==="VIEWER"));
+  // v1.3: repeated failed sign-ins lock an account until an administrator resets it.
+  for(let n=0;n<5;n++){
+   const wrong=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username:"ci-editor",password:"incorrect-password-"+n})});
+   assert.equal(wrong.response.status,401);
+  }
+  const locked=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username:"ci-editor",password:"CI-password-only-not-for-real-users"})});
+  assert.equal(locked.response.status,401,"Correct password must not bypass temporary lockout");
+  const editorAccount=adminUsers.body.operators.find(row=>row.username==="ci-editor");
+  const lockedListing=await request("/api/operators");
+  const lockedEditor=lockedListing.body.operators.find(row=>row.username==="ci-editor");
+  assert.ok(lockedEditor.loginLockedUntil);
+  assert.ok(lockedEditor.failedLoginCount>=5);
+  const unlock=await request("/api/operators",{method:"PATCH",body:JSON.stringify({id:editorAccount.id,resetLockout:true})});
+  assert.equal(unlock.response.status,200,JSON.stringify(unlock.body));
+  const unblocked=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username:"ci-editor",password:"CI-password-only-not-for-real-users"})});
+  assert.equal(unblocked.response.status,200);
+  // Admin session stays in effect: a newly issued editor cookie does not replace it.
+  sessionCookie=adminCookie;
   // Deactivation revokes an existing viewer session in the database.
   const viewerId=adminUsers.body.operators.find(user=>user.username==="ci-viewer").id;
   const deactivate=await request("/api/operators",{method:"PATCH",body:JSON.stringify({id:viewerId,active:false})});
