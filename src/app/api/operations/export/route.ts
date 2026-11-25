@@ -9,7 +9,7 @@ function csvField(value:unknown){
  return '"'+safe.replaceAll('"','""')+'"';
 }
 export async function GET(request:Request){
- const denied=requireLocalPrototype(request);if(denied)return denied;
+ const denied=await requireLocalPrototype(request);if(denied)return denied;
  const type=new URL(request.url).searchParams.get("type");
  if(type!=="audits"&&type!=="findings"&&type!=="actions"&&type!=="evidence")
   return NextResponse.json({error:"Unknown export type"},{status:400});
