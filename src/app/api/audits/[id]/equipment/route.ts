@@ -1,3 +1,4 @@
+import {auditMutationConflict} from "@/lib/audit-mutation";
 import {guardedAuditTransaction} from "@/lib/audit-mutation";
 import {getSession} from "@/lib/local-auth";
 import {requireEditableAudit} from "@/lib/require-editable-audit";
@@ -21,10 +22,14 @@ export async function PUT(request:Request,context:{params:Promise<{id:string}>})
  if(!audit)return NextResponse.json({error:"Audit not found"},{status:404});
  const available=await prisma.equipment.findMany({where:{id:{in:ids}},select:{id:true}});
  if(available.length!==ids.length)return NextResponse.json({error:"One or more instruments do not exist"},{status:404});
- await guardedAuditTransaction(id,async tx=>{
+ try{await guardedAuditTransaction(id,async tx=>{
    await tx.auditEquipment.deleteMany({where:{auditId:id}});
    if(ids.length)await tx.auditEquipment.createMany({data:ids.map(equipmentId=>({auditId:id,equipmentId}))});
    await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"EQUIPMENT_ASSIGNED",details:{equipmentIds:ids}}});
- });
+ }); }catch(error){
+  if(auditMutationConflict(error))return NextResponse.json({error:"Audit has been sealed; reload before changing records"},{status:409});
+  throw error;
+ }
+ 
  return NextResponse.json({ok:true,assignedCount:ids.length},{headers:{"Cache-Control":"no-store"}});
 }
