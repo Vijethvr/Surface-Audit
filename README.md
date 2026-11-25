@@ -248,3 +248,33 @@ npm run dev -- -p 3001
 ```
 
 Review and back up the database before changing its schema. **For legacy databases without `_prisma_migrations`, stop and inspect first; do not run `migrate deploy` blindly.** For a brand-new empty database, the complete versioned migration chain can be deployed directly. No actual client data or public deployment is supported yet.
+
+
+## v1.5 — Backup/restore drills and append-only history safeguards
+
+A repeatable, **local-development-only** PostgreSQL recovery toolkit now handles backup, archive verification, and restore into a **separate, already-created, empty** database. Install the PostgreSQL client commands `pg_dump`, `pg_restore` and `psql` (matching your PostgreSQL server major version), and ensure they are available on your Windows PATH. The Node 22 script reads the project-root `.env.local`. It accepts only loopback PostgreSQL connections and refuses production mode.
+
+**Before backups, shut down the SURFACE Audit development server and stop all other database writers.** This is a single PostgreSQL consistent snapshot, not a coordinated hot backup of other external services or files. Evidence files stored in PostgreSQL are included.
+
+On Windows Anaconda Prompt from the SURFACE Audit project directory:
+
+```bat
+node scripts/local-recovery.mjs backup C:\\surface-audit-backups\\audit-2026-11-25
+node scripts/local-recovery.mjs verify C:\\surface-audit-backups\\audit-2026-11-25
+```
+
+The new directory receives `surface-audit.backup` (PostgreSQL custom-format archive) and `manifest.json` (SHA-256 and byte length). The tool refuses to overwrite an existing backup, and verification fails for changed archive bytes. **The archive is not encrypted.** Handle it as confidential if your development database contains any information you cannot disclose; keep offsite, access-controlled copies through independently managed storage.
+
+**Restore drill (new empty database only):** First create a separate database named `surface_audit_restore` in your local PostgreSQL server with the same account permissions, then run:
+
+```bat
+node scripts/local-recovery.mjs restore C:\\surface-audit-backups\\audit-2026-11-25 surface_audit_restore --confirm=surface_audit_restore
+```
+
+The script refuses the source database, a nonempty target, remote hosts, an unconfirmed name, or an archive with the wrong digest. Restoration uses a single PostgreSQL transaction with error-on-failure behavior. **It never drops existing tables or overwrites an existing database.** After restore, update your local development `DATABASE_URL` only if you intentionally want to inspect the restored copy, and confirm the restored migration ledger and records before any further use.
+
+**History protections:** A new versioned PostgreSQL migration installs triggers that reject `UPDATE` and `DELETE` on `AuditEvent`, `AuditReview`, `AuditReportSnapshot`, and `EvidenceAsset`. The database-backed application can still append new records. These guards protect against accidental or ordinary application-role alteration but **are not a WORM archive**: a database owner or superuser can disable triggers, alter data, or replace backups. Separate privileged infrastructure, externally anchored signatures and operational monitoring would be required for actual tamper-evident retention.
+
+**CI verification:** The isolated PostgreSQL pipeline now creates populated audit records, attempts forbidden direct SQL mutations, backs up the database, deliberately corrupts the archive to check rejection, restores into a second empty database, compares audit/event/review/attachment/report counts and attachment content hashes, and verifies that another restore into the populated target is rejected. Production disaster recovery, backup encryption, trusted timestamps, migration upgrades from all legacy databases, and an independent offsite recovery drill remain untested.
+
+The application remains a **local-development prototype only**. Do not expose it publicly or store confidential customer evidence.
