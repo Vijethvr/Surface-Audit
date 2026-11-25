@@ -34,7 +34,7 @@ export default function ReportView(){
  return <main className="print-report">
  <div className="report-controls">
   <Link href="/">SURFACE Audit · Workspace</Link>
-  <div><button type="button" onClick={()=>void refresh()} disabled={loading}>Refresh saved data</button>
+  <div><a className="report-dossier-link" href={"/api/audits/"+encodeURIComponent(params.id)+"/dossier"}>Export audit dossier</a><button type="button" onClick={()=>void refresh()} disabled={loading}>Refresh saved data</button>
   <button type="button" onClick={()=>window.print()} disabled={!report}>Print / Save as PDF</button></div>
  </div>
  {loading&&<p role="status">Loading saved audit report…</p>}
