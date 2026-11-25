@@ -456,6 +456,36 @@ try {
   assert.deepEqual(historyV7.body.events.map(e=>e.action).slice(-3),["AUDIT_UPDATED","REVIEW_APPROVED","AUDIT_SEALED"]);
   assert.equal((await request(reviewRoot)).body.current,true);
 
+  // v1.5: DB-level append-only guards block direct SQL changes even when
+  // bypassing the application APIs (not a defense against database owners).
+  const {PrismaClient: IntegrityPrismaClient}=await import("@prisma/client");
+  const integrityDb=new IntegrityPrismaClient();
+  try{
+    const event=await integrityDb.auditEvent.findFirst({where:{auditId:engagementId},orderBy:{createdAt:"asc"}});
+    assert.ok(event);
+    await assert.rejects(
+      integrityDb.auditEvent.update({where:{id:event.id},data:{actor:"altered"}}),
+      /history is append-only|constraint|P2004/i);
+    await assert.rejects(
+      integrityDb.auditEvent.delete({where:{id:event.id}}),
+      /history is append-only|constraint|P2004/i);
+    const reviewRow=await integrityDb.auditReview.findFirst({where:{auditId:engagementId}});
+    assert.ok(reviewRow);
+    await assert.rejects(
+      integrityDb.auditReview.update({where:{id:reviewRow.id},data:{note:"tampered"}}),
+      /history is append-only|constraint|P2004/i);
+    const snapshotRow=await integrityDb.auditReportSnapshot.findUnique({where:{auditId:engagementId}});
+    assert.ok(snapshotRow);
+    await assert.rejects(
+      integrityDb.auditReportSnapshot.update({where:{id:snapshotRow.id},data:{sha256:"bad"}}),
+      /history is append-only|constraint|P2004/i);
+    const assetRow=await integrityDb.evidenceAsset.findFirst({where:{auditId:engagementId}});
+    assert.ok(assetRow);
+    await assert.rejects(
+      integrityDb.evidenceAsset.delete({where:{id:assetRow.id}}),
+      /history is append-only|constraint|P2004/i);
+  }finally{await integrityDb.$disconnect()}
+
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
   assert.equal(logout.response.status,200);
   sessionCookie="";
