@@ -1,3 +1,4 @@
+import {guardedAuditTransaction} from "@/lib/audit-mutation";
 import {getSession} from "@/lib/local-auth";
 import {requireEditableAudit} from "@/lib/require-editable-audit";
 import {NextResponse} from "next/server";
@@ -13,7 +14,7 @@ export async function PATCH(request:Request,ctx:{params:Promise<{id:string;findi
  if(!existing)return NextResponse.json({error:"Finding not found"},{status:404});
  if(parsed.data.status==="CLOSED"&&(!existing.actions.length||existing.actions.some(x=>x.status!=="VERIFIED")))
  return NextResponse.json({error:"Closure requires all corrective actions verified"},{status:409});
- const finding=await prisma.$transaction(async tx=>{
+ const finding=await guardedAuditTransaction(id,async tx=>{
   const item=await tx.finding.update({where:{id:findingId},data:{status:parsed.data.status}});
   await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"FINDING_STATUS_CHANGED",details:{findingId,status:item.status}}});return item;
  });
