@@ -1,3 +1,4 @@
+import {requireEditableAudit} from "@/lib/require-editable-audit";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -9,6 +10,7 @@ const assignment=z.object({equipmentIds:z.array(z.string().cuid()).max(40)});
 export async function PUT(request:Request,context:{params:Promise<{id:string}>}){
  const denied=requireLocalPrototype(request);if(denied)return denied;
  const {id}=await context.params;
+ const sealed=await requireEditableAudit(id);if(sealed)return sealed;
  const input=assignment.safeParse(await request.json().catch(()=>null));
  if(!input.success)return NextResponse.json({error:"Invalid equipment assignments"},{status:400});
  const ids=input.data.equipmentIds;

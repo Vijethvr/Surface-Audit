@@ -1,3 +1,4 @@
+import {requireEditableAudit} from "@/lib/require-editable-audit";
 import {NextResponse} from "next/server";
 import {z} from "zod";
 import {prisma} from "@/lib/db";
@@ -16,6 +17,7 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
  const denied=requireLocalPrototype(request);if(denied)return denied;
  const {id}=await ctx.params;const parsed=input.safeParse(await request.json().catch(()=>null));
  if(!parsed.success)return NextResponse.json({error:"Invalid finding"},{status:400});
+ const sealed=await requireEditableAudit(id);if(sealed)return sealed;
  const codes=await requirementCodes(id);
  if(!codes)return NextResponse.json({error:"Audit not found"},{status:404});
  if(!codes.has(parsed.data.requirementCode))return NextResponse.json({error:"Requirement not in audit"},{status:400});

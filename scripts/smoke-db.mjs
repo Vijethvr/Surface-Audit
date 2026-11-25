@@ -248,11 +248,40 @@ try {
     method:"PATCH",body:JSON.stringify({status:"Completed",record:custom})
   });
   assert.equal(invalidSimultaneous.response.status,409);
+  // v1.0: live cross-audit portfolio and downloadable CSVs.
+  const ops=await request("/api/operations");
+  assert.equal(ops.response.status,200,JSON.stringify(ops.body));
+  assert.ok(ops.body.summary.audits>=2);
+  assert.ok(ops.body.summary.openFindings>=0);
+  assert.ok(ops.body.actions.some(row=>row.id===actionId));
+  assert.ok(ops.body.findings.some(row=>row.id===findingId));
+  assert.ok(ops.body.evidence.some(row=>row.reference==="CERT-"+unique));
+  const csvExport=await fetch(base+"/api/operations/export?type=evidence",{headers:{Cookie:sessionCookie}});
+  assert.equal(csvExport.status,200);
+  assert.ok(csvExport.headers.get("content-type")?.includes("text/csv"));
+  assert.ok((await csvExport.text()).includes("CERT-"+unique));
+  const invalidExport=await request("/api/operations/export?type=unsupported");
+  assert.equal(invalidExport.response.status,400);
   const completion=await request("/api/audits/"+encodeURIComponent(engagementId),{
     method:"PATCH",body:JSON.stringify({status:"Completed"})
   });
   assert.equal(completion.response.status,200,JSON.stringify(completion.body));
   assert.equal((await request("/api/audits")).body.audits.find(a=>a.id===engagementId).status,"Completed");
+  const sealedReport=await request("/api/audits/"+encodeURIComponent(engagementId)+"/report");
+  assert.equal(sealedReport.response.status,200);
+  assert.equal(sealedReport.body.integrity.snapshot,true);
+  assert.equal(sealedReport.body.integrity.verified,true);
+  assert.match(sealedReport.body.integrity.sha256,/^[a-f0-9]{64}$/);
+  assert.equal(sealedReport.body.report.audit.status,"COMPLETED");
+  assert.ok(sealedReport.body.report.requirements[0].evidenceReferences.some(e=>e.reference==="CERT-"+unique));
+  const blockedEdit=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({record:custom})});
+  assert.equal(blockedEdit.response.status,409);
+  const blockedEquipment=await request("/api/audits/"+encodeURIComponent(engagementId)+"/equipment",{method:"PUT",body:JSON.stringify({equipmentIds:[]})});
+  assert.equal(blockedEquipment.response.status,409);
+  const blockedEvidence=await request("/api/audits/"+encodeURIComponent(engagementId)+"/evidence",{method:"POST",body:JSON.stringify({requirementCode:"REQ-01",reference:"LATE-EVD"})});
+  assert.equal(blockedEvidence.response.status,409);
+  const blockedFinding=await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings",{method:"POST",body:JSON.stringify({requirementCode:"REQ-01",title:"Late finding",description:"Post-completion edit"})});
+  assert.equal(blockedFinding.response.status,409);
   const cannotChangeClosed=await request(actionPath,{method:"PATCH",body:JSON.stringify({status:"OPEN"})});
   assert.equal(cannotChangeClosed.response.status,409);
   const listedFindings=await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings");
@@ -273,6 +302,8 @@ try {
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings")).response.status,401);
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/evidence")).response.status,401);
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/report")).response.status,401);
+  assert.equal((await request("/api/operations")).response.status,401);
+  assert.equal((await request("/api/operations/export?type=audits")).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
   child.kill("SIGTERM");

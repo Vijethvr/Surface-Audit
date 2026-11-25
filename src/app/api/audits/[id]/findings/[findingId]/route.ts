@@ -1,3 +1,4 @@
+import {requireEditableAudit} from "@/lib/require-editable-audit";
 import {NextResponse} from "next/server";
 import {z} from "zod";import {prisma} from "@/lib/db";import {requireLocalPrototype} from "@/lib/dev-api";
 export const runtime="nodejs";
@@ -6,6 +7,7 @@ export async function PATCH(request:Request,ctx:{params:Promise<{id:string;findi
  const denied=requireLocalPrototype(request);if(denied)return denied;
  const {id,findingId}=await ctx.params;const parsed=input.safeParse(await request.json().catch(()=>null));
  if(!parsed.success)return NextResponse.json({error:"Invalid finding status"},{status:400});
+ const sealed=await requireEditableAudit(id);if(sealed)return sealed;
  const existing=await prisma.finding.findFirst({where:{id:findingId,auditId:id},include:{actions:true}});
  if(!existing)return NextResponse.json({error:"Finding not found"},{status:404});
  if(parsed.data.status==="CLOSED"&&(!existing.actions.length||existing.actions.some(x=>x.status!=="VERIFIED")))

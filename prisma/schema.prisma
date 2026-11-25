@@ -34,6 +34,7 @@ model Audit {
   equipmentLinks AuditEquipment[]
   findings   Finding[]
   evidenceReferences EvidenceReference[]
+  reportSnapshot AuditReportSnapshot?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -183,4 +184,13 @@ model EvidenceReference {
   createdAt       DateTime @default(now())
 
   @@index([auditId,requirementCode])
+}
+
+model AuditReportSnapshot {
+  id          String   @id @default(cuid())
+  auditId     String   @unique
+  audit       Audit    @relation(fields:[auditId],references:[id],onDelete:Restrict)
+  report      Json
+  sha256      String
+  createdAt   DateTime @default(now())
 }
