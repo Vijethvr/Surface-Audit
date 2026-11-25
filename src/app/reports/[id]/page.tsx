@@ -48,6 +48,11 @@ export default function ReportView(){
    {integrity.sha256&&<p><b>SHA-256:</b> <code style={{overflowWrap:"anywhere"}}>{integrity.sha256}</code></p>}
    {integrity.capturedAt&&<p>Captured: {new Date(integrity.capturedAt).toLocaleString("en-GB")}</p>}
    <p>Digest verification detects mismatch against a saved value; a database administrator could replace both. No independent third-party signature or approval is implied.</p></section>}
+  {integrity?.snapshot&&integrity.verified&&<section className="report-section report-offline-signing">
+   <h2>Independent dossier signing (offline)</h2>
+   <p>Export the sealed JSON dossier above, then sign it on a separate trusted workstation using <code>scripts/dossier-signature.mjs</code>. Verify using a public key received independently of the dossier. The signing private key is never uploaded to this app.</p>
+   <p>Signing proves that the holder of the matching private key signed the exact dossier contents; it does not independently verify the author's identity, time, evidence authenticity or regulatory approval. See the README for the three signing commands.</p>
+  </section>}
   <section className="report-metadata">
    <div><small>Audit ID</small><b>{report.audit.id}</b></div>
    <div><small>Client</small><b>{report.audit.client}</b></div>
