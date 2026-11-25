@@ -111,10 +111,10 @@ jobs:
           psql -h 127.0.0.1 -p 5432 -U surfaceaudit_ci -d postgres -v ON_ERROR_STOP=1 \
             -c 'CREATE DATABASE surface_audit_restore_ci OWNER surfaceaudit_ci'
           before=$(psql -h 127.0.0.1 -U surfaceaudit_ci -d surface_audit_ci -At -v ON_ERROR_STOP=1 \
-            -c 'SELECT concat_ws(''|'',(SELECT count(*) FROM "Audit"),(SELECT count(*) FROM "AuditEvent"),(SELECT count(*) FROM "AuditReview"),(SELECT count(*) FROM "EvidenceAsset"),(SELECT count(*) FROM "AuditReportSnapshot"),(SELECT md5(coalesce(string_agg(id || '':'' || md5(encode(bytes,''hex'')), '','' ORDER BY id),'''')) FROM "EvidenceAsset"))')
+            -c "SELECT concat_ws('|',(SELECT count(*) FROM \"Audit\"),(SELECT count(*) FROM \"AuditEvent\"),(SELECT count(*) FROM \"AuditReview\"),(SELECT count(*) FROM \"EvidenceAsset\"),(SELECT count(*) FROM \"AuditReportSnapshot\"),(SELECT md5(coalesce(string_agg(id || ':' || md5(encode(bytes,'hex')), ',' ORDER BY id),'')) FROM \"EvidenceAsset\") )")
           node scripts/local-recovery.mjs restore /tmp/surface-audit-ci-recovery surface_audit_restore_ci --confirm=surface_audit_restore_ci
           after=$(psql -h 127.0.0.1 -U surfaceaudit_ci -d surface_audit_restore_ci -At -v ON_ERROR_STOP=1 \
-            -c 'SELECT concat_ws(''|'',(SELECT count(*) FROM "Audit"),(SELECT count(*) FROM "AuditEvent"),(SELECT count(*) FROM "AuditReview"),(SELECT count(*) FROM "EvidenceAsset"),(SELECT count(*) FROM "AuditReportSnapshot"),(SELECT md5(coalesce(string_agg(id || '':'' || md5(encode(bytes,''hex'')), '','' ORDER BY id),'''')) FROM "EvidenceAsset"))')
+            -c "SELECT concat_ws('|',(SELECT count(*) FROM \"Audit\"),(SELECT count(*) FROM \"AuditEvent\"),(SELECT count(*) FROM \"AuditReview\"),(SELECT count(*) FROM \"EvidenceAsset\"),(SELECT count(*) FROM \"AuditReportSnapshot\"),(SELECT md5(coalesce(string_agg(id || ':' || md5(encode(bytes,'hex')), ',' ORDER BY id),'')) FROM \"EvidenceAsset\") )")
           test "$before" = "$after"
           if node scripts/local-recovery.mjs restore /tmp/surface-audit-ci-recovery surface_audit_restore_ci --confirm=surface_audit_restore_ci; then
             echo "ERROR: nonempty target restore was accepted"
