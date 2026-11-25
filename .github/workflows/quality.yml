@@ -37,12 +37,6 @@ jobs:
         run: npx prisma validate
       - name: Generate Prisma client
         run: npm run db:generate
-      - name: Preview baseline migration SQL for versioned history
-        run: |
-          npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script > /tmp/surface-audit-baseline.sql
-          echo "__BEGIN_SURFACE_SQL__"
-          cat /tmp/surface-audit-baseline.sql
-          echo "__END_SURFACE_SQL__"
       - name: Typecheck
         run: npm run lint
       - name: Production build
@@ -81,8 +75,12 @@ jobs:
         run: npm install --no-fund
       - name: Generate Prisma Client
         run: npm run db:generate
-      - name: Create isolated test schema
-        run: npx prisma db push --skip-generate
+      - name: Apply versioned migrations to fresh PostgreSQL
+        run: npx prisma migrate deploy
+      - name: Verify migration/schema drift
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+      - name: Verify migration ledger
+        run: npx prisma migrate status
       - name: Seed test-only operators and roles
         run: node scripts/seed-ci-operators.mjs
       - name: Validate audit persistence over HTTP
