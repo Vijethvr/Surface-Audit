@@ -106,9 +106,17 @@ jobs:
           done
           echo "/tmp/surface-audit-pg16-tools" >> "$GITHUB_PATH"
           /tmp/surface-audit-pg16-tools/pg_dump --version
+      - name: Validate local configuration and refuse unsafe bind address
+        run: |
+          node scripts/local-preflight.mjs
+          if SURFACE_AUDIT_BIND_HOST=0.0.0.0 node scripts/local-preflight.mjs; then
+            echo "ERROR: unsafe wildcard bind was accepted"
+            exit 1
+          fi
       - name: Backup, tamper-detect and restore populated PostgreSQL into a new DB
         env:
           PGPASSWORD: ci_only_password
+          SURFACE_AUDIT_BACKUP_PASSPHRASE: CI-only-long-random-passphrase-2026
         run: |
           set -euo pipefail
           node scripts/local-recovery.mjs backup /tmp/surface-audit-ci-recovery
@@ -133,4 +141,19 @@ jobs:
             exit 1
           fi
           echo "PASS: populated database, event history, sealed report and attached evidence restored with matching counts and checksums"
+          node scripts/secure-backup.mjs seal /tmp/surface-audit-ci-recovery /tmp/surface-audit-ci-secured
+          node scripts/secure-backup.mjs unseal /tmp/surface-audit-ci-secured /tmp/surface-audit-ci-unsealed
+          node scripts/local-recovery.mjs verify /tmp/surface-audit-ci-unsealed
+          cmp /tmp/surface-audit-ci-unsealed/surface-audit.backup /tmp/surface-audit-ci-recovery/surface-audit.backup
+          if SURFACE_AUDIT_BACKUP_PASSPHRASE=incorrect-long-test-passphrase node scripts/secure-backup.mjs unseal /tmp/surface-audit-ci-secured /tmp/surface-audit-ci-wrongpass; then
+            echo "ERROR: wrong passphrase was accepted"
+            exit 1
+          fi
+          cp -r /tmp/surface-audit-ci-secured /tmp/surface-audit-ci-secured-tampered
+          printf damaged >> /tmp/surface-audit-ci-secured-tampered/surface-audit.vault
+          if node scripts/secure-backup.mjs unseal /tmp/surface-audit-ci-secured-tampered /tmp/surface-audit-ci-tampered; then
+            echo "ERROR: tampered encrypted backup was accepted"
+            exit 1
+          fi
+          echo "PASS: authenticated encrypted backup, decrypted restore source, incorrect password and tampering rejection"
 

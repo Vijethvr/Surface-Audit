@@ -278,3 +278,22 @@ The script refuses the source database, a nonempty target, remote hosts, an unco
 **CI verification:** The isolated PostgreSQL pipeline now creates populated audit records, attempts forbidden direct SQL mutations, backs up the database, deliberately corrupts the archive to check rejection, restores into a second empty database, compares audit/event/review/attachment/report counts and attachment content hashes, and verifies that another restore into the populated target is rejected. Production disaster recovery, backup encryption, trusted timestamps, migration upgrades from all legacy databases, and an independent offsite recovery drill remain untested.
 
 The application remains a **local-development prototype only**. Do not expose it publicly or store confidential customer evidence.
+
+
+## v1.6 — Encrypted local backup package and configuration preflight
+
+**Local deployment preflight:** Before starting the database-backed application, run `node scripts/local-preflight.mjs`. The read-only check verifies Node 22, development mode, the explicit PostgreSQL enable flag, a loopback database URL with credentials, and a loopback web-server bind host. For Windows start the app with `npm run dev -- -H 127.0.0.1 -p 3001`. **Preflight cannot independently verify a firewall, network accessibility, confidentiality, or user identities; it is not a production certification.** Use the local database inspector and Prisma migration status checks separately.
+
+**Encrypted recovery package:** `scripts/secure-backup.mjs` uses AES-256-GCM authenticated encryption, a random 16-byte salt and 12-byte nonce, and scrypt to derive a key from a 20+ character passphrase. It combines the `surface-audit.backup` archive and `manifest.json` into a single `surface-audit.vault` file without replacing the originals.
+
+1. Stop writers, perform a regular PostgreSQL backup using `node scripts/local-recovery.mjs backup C:\\surface-audit-backups\\audit-unencrypted`.
+2. Validate it with `node scripts/local-recovery.mjs verify C:\\surface-audit-backups\\audit-unencrypted`.
+3. Set a unique, high-entropy secret in the **local shell** without placing it in Git or command history. On Windows `cmd.exe` use `set "SURFACE_AUDIT_BACKUP_PASSPHRASE=<a unique long passphrase>"` (replace the placeholder).
+4. Run `node scripts/secure-backup.mjs seal C:\\surface-audit-backups\\audit-unencrypted C:\\surface-audit-backups\\audit-secured`.
+5. When needed, extract to **another, newly named directory**: `node scripts/secure-backup.mjs unseal C:\\surface-audit-backups\\audit-secured C:\\surface-audit-backups\\audit-extracted`. Run the standard verification and restore on that extracted directory, restoring **only to a different already-created empty local database**.
+
+The encryption script refuses existing destinations, invalid passphrases and modified ciphertext, and accepts at most 256 MiB of development data. **It does not automatically delete or securely erase the original plaintext backup or the extracted plaintext.** Manage those files, backups and passphrases carefully. No password recovery exists. It is a developer encryption helper, not a hosted backup manager, offsite store, KMS or independently certified archive.
+
+CI runs the normal populated PostgreSQL restore drill, then encrypts/decrypts the backup and checks byte equality; deliberately wrong passphrases and altered encrypted files must fail. It also verifies that the preflight rejects a wildcard bind address. See `PROJECT_HANDOFF.md` for a durable project handoff to new conversations.
+
+**Status:** Local-development only. Do not expose database APIs publicly or store sensitive client records. Threat modeling, MFA, malware scanning, externally protected signing and operational security review are still required.
