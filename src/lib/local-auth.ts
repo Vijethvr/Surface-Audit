@@ -29,7 +29,7 @@ function extractToken(request:Request){
  return token&&/^[a-f0-9]{64}$/.test(token)?token:null;
 }
 export async function getSession(request:Request):Promise<OperatorIdentity|null>{
- if(!authConfigured())return null;
+ if(!authConfigured()||!validLocalRequestHost(request))return null;
  const token=extractToken(request);if(!token)return null;
  const row=await prisma.operatorSession.findUnique({where:{tokenHash:hashToken(token)},include:{operator:true}});
  if(!row||row.expiresAt<=new Date()||!row.operator.active)return null;
@@ -44,7 +44,19 @@ export async function destroySession(request:Request){
  const token=extractToken(request);
  if(token)await prisma.operatorSession.deleteMany({where:{tokenHash:hashToken(token)}});
 }
+export function validLocalRequestHost(request:Request){
+ try{
+  const supplied=request.headers.get("host");
+  if(!supplied||supplied.includes("/")||supplied.includes("@"))return false;
+  const parsed=new URL("http://"+supplied);
+  const requestUrl=new URL(request.url);
+  if(!["localhost","127.0.0.1","[::1]"].includes(parsed.hostname))return false;
+  if(!["localhost","127.0.0.1","[::1]"].includes(requestUrl.hostname))return false;
+  return parsed.host===requestUrl.host&&parsed.username===""&&parsed.password==="";
+ }catch{return false}
+}
 export function validMutationOrigin(request:Request){
+ if(!validLocalRequestHost(request))return false;
  const origin=request.headers.get("origin");
  const host=request.headers.get("host");
  if(!origin||!host)return false;
