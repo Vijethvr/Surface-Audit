@@ -1,6 +1,7 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
 import {CheckCircle2,AlertTriangle,ExternalLink,RefreshCw} from "lucide-react";
+import IndependentReview from "@/components/independent-review";
 type Readiness={ready:boolean;blockers:string[]};
 export default function ReportReadiness({auditId,revision}:{auditId:string;revision:number}){
  const [readiness,setReadiness]=useState<Readiness|null>(null);
@@ -25,6 +26,7 @@ export default function ReportReadiness({auditId,revision}:{auditId:string;revis
    {readiness.blockers.length>0&&<ul>{readiness.blockers.map((reason,i)=><li key={i}>{reason}</li>)}</ul>}
   </div>}
   <a className="secondary report-link" href={"/reports/"+encodeURIComponent(auditId)} target="_blank" rel="noopener noreferrer"><ExternalLink size={16}/> Open draft report / Print</a>
-  <p className="registry-info">Completion requires recorded assessments, a reviewer and summary, and closed verified findings. This does not validate underlying evidence or reviewer identity.</p>
+  <p className="registry-info">Completion also requires a current approval by an independent authenticated operator. It does not validate source evidence or constitute a formal electronic signature.</p>
+  <IndependentReview auditId={auditId} revision={revision}/>
  </div>;
 }
