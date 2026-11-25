@@ -94,6 +94,14 @@ jobs:
         run: node scripts/seed-ci-operators.mjs
       - name: Validate audit persistence over HTTP
         run: node scripts/smoke-db.mjs
+      - name: Select PostgreSQL 16 client tools matching the CI server
+        run: |
+          if [ ! -x /usr/lib/postgresql/16/bin/pg_dump ]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client-16
+          fi
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+          /usr/lib/postgresql/16/bin/pg_dump --version
       - name: Backup, tamper-detect and restore populated PostgreSQL into a new DB
         env:
           PGPASSWORD: ci_only_password
