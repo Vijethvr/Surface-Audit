@@ -4,7 +4,7 @@ import {z} from "zod";import {prisma} from "@/lib/db";import {requireLocalProtot
 export const runtime="nodejs";
 const input=z.object({status:z.enum(["OPEN","ACTION_IN_PROGRESS","READY_FOR_VERIFICATION","CLOSED"])});
 export async function PATCH(request:Request,ctx:{params:Promise<{id:string;findingId:string}>}){
- const denied=requireLocalPrototype(request);if(denied)return denied;
+ const denied=await requireLocalPrototype(request);if(denied)return denied;
  const {id,findingId}=await ctx.params;const parsed=input.safeParse(await request.json().catch(()=>null));
  if(!parsed.success)return NextResponse.json({error:"Invalid finding status"},{status:400});
  const sealed=await requireEditableAudit(id);if(sealed)return sealed;
