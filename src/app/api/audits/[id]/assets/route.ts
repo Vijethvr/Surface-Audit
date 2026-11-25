@@ -6,14 +6,14 @@ import {requirementCodes} from "@/lib/audit-requirements";
 import {evidenceDigest,inspectEvidence,maxEvidenceBytes,maxEvidencePerAudit,safeFilename} from "@/lib/evidence-vault";
 export const runtime="nodejs";export const dynamic="force-dynamic";
 export async function GET(request:Request,ctx:{params:Promise<{id:string}>}){
- const denial=requireLocalPrototype(request);if(denial)return denial;
+ const denial=await requireLocalPrototype(request);if(denial)return denial;
  const {id}=await ctx.params;
  const codes=await requirementCodes(id);if(!codes)return NextResponse.json({error:"Audit not found"},{status:404});
  const assets=await prisma.evidenceAsset.findMany({where:{auditId:id},select:{id:true,requirementCode:true,filename:true,mimeType:true,sizeBytes:true,sha256:true,uploadedBy:true,createdAt:true},orderBy:{createdAt:"desc"},take:maxEvidencePerAudit});
  return NextResponse.json({assets,maxEvidenceBytes,maxEvidencePerAudit},{headers:{"Cache-Control":"no-store"}});
 }
 export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
- const denial=requireLocalPrototype(request);if(denial)return denial;
+ const denial=await requireLocalPrototype(request);if(denial)return denial;
  const {id}=await ctx.params;
  const sealed=await requireEditableAudit(id);if(sealed)return sealed;
  const len=Number(request.headers.get("content-length")||0);
