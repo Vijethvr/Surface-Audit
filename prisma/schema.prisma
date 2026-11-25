@@ -36,6 +36,7 @@ model Audit {
   evidenceReferences EvidenceReference[]
   evidenceAssets EvidenceAsset[]
   reportSnapshot AuditReportSnapshot?
+  reviews AuditReview[]
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -211,4 +212,45 @@ model EvidenceAsset {
   createdAt       DateTime @default(now())
 
   @@index([auditId, requirementCode])
+}
+
+enum OperatorRole {
+  ADMIN
+  EDITOR
+  REVIEWER
+  VIEWER
+}
+model Operator {
+  id String @id @default(cuid())
+  username String @unique
+  passwordHash String
+  role OperatorRole
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sessions OperatorSession[]
+}
+model OperatorSession {
+  id String @id @default(cuid())
+  tokenHash String @unique
+  operatorId String
+  operator Operator @relation(fields: [operatorId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([operatorId])
+}
+model AuditReview {
+  id String @id @default(cuid())
+  auditId String
+  audit Audit @relation(fields: [auditId], references: [id], onDelete: Restrict)
+  reviewerId String
+  reviewerName String
+  decision ReviewDecision
+  note String
+  reviewedAt DateTime @default(now())
+  @@index([auditId, reviewedAt])
+}
+enum ReviewDecision {
+  APPROVED
+  REJECTED
 }

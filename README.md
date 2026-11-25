@@ -171,3 +171,22 @@ node scripts\verify-dossier.mjs C:\path\to\surface-audit-dossier-ID.json
 The offline verifier checks the report SHA-256, the embedded evidence bytes and sizes, file identifiers and the report's attached-file manifest. It returns a non-zero exit code when it detects a mismatch. CI tests also alter an attachment and report field to confirm failures are detected.
 
 **Security boundary:** A JSON file with embedded hashes does not establish the identity of the author, an authoritative timestamp, or an independently anchored signature. Someone who can replace the entire dossier can also recalculate its embedded hashes. Treat this as a portable, internally verifiable **development copy**, not an approved record or preservation archive. Exported bundles include full uploaded file contents and require appropriate handling; do not export confidential customer records from this prototype.
+
+## v1.2 — Individual local accounts and independent review governance
+
+The older single shared-operator login is superseded by **database-backed local operator identities**. A user must sign in using a uniquely named account created in the local development PostgreSQL database. Cookies hold an opaque, random session token; PostgreSQL stores only its SHA-256 digest and an expiry time. Sign-out deletes that session. An administrator can disable an account and revoke its sessions at `/operators`.
+
+Roles: **ADMIN** (read, edit, approve others' work, account status); **EDITOR** (read and edit, cannot approve); **REVIEWER** (read and independently review, cannot edit assessment data); **VIEWER** (read only). All database APIs check the session server-side. A review can be recorded only when the audit is **In review**, and the reviewing operator cannot be the operator who last changed the audit. Approval requires current checklist/CAPA readiness. An approval expires if subsequent operational events change the audit. Audit completion requires a current independent approval, then retains the existing sealed report snapshot.
+
+**Local first-use setup:** Configure a throwaway PostgreSQL development database, `SURFACE_AUDIT_ENABLE_LOCAL_API=true`, and `NEXT_PUBLIC_SURFACE_AUDIT_STORAGE_MODE=postgres` in `.env.local`. Run `npm install`, `npm run db:generate`, then `npx prisma migrate dev --name local_operator_governance` against the disposable database. Create separate local accounts using:
+```bat
+node scripts/create-local-operator.mjs local-admin ADMIN
+node scripts/create-local-operator.mjs auditor EDITOR
+node scripts/create-local-operator.mjs reviewer REVIEWER
+node scripts/create-local-operator.mjs observer VIEWER
+```
+Set `SURFACE_AUDIT_ENABLE_LOCAL_API=true` in the **shell environment** too when using the CLI script; `.env.local` is not automatically read by a standalone Node script. Never commit passwords. The older `SURFACE_AUDIT_ADMIN_USERNAME`, `SURFACE_AUDIT_ADMIN_PASSWORD_SCRYPT` and `SURFACE_AUDIT_SESSION_SECRET` variables are no longer used by the new local login.
+
+**Important limits:** This is role separation within a **local development prototype**, not a production identity system. There is still no tested production migration history, MFA, rate limiting, centralized identity, trustworthy audit-signature service, robust transaction isolation for concurrent reviewer/editor changes, or independent external timestamping. A local DB administrator can still alter review or history data. Review approval is a development workflow decision, **not a regulatory signature or calibration approval**. Do not expose the application publicly or enter confidential customer data.
+
+The isolated CI database seeds fake admin/editor/reviewer/viewer identities and tests session revocation, role restrictions, self-review rejection and independent approval. Do not apply a new migration blindly to a real database; back it up and review the generated SQL first.

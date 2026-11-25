@@ -6,7 +6,7 @@ import {evidenceDigest} from "@/lib/evidence-vault";
 export const runtime="nodejs";export const dynamic="force-dynamic";
 const MAX_DOSSIER_BYTES=12*1024*1024;
 export async function GET(request:Request,ctx:{params:Promise<{id:string}>}){
- const denied=requireLocalPrototype(request);if(denied)return denied;
+ const denied=await requireLocalPrototype(request);if(denied)return denied;
  const {id}=await ctx.params;
  const result=await readReport(id);
  if(!result)return NextResponse.json({error:"Audit not found"},{status:404});

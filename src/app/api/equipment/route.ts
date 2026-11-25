@@ -14,12 +14,12 @@ const input=z.object({
  notes:z.string().trim().max(2000).optional()
 });
 export async function GET(request:Request){
- const denial=requireLocalPrototype(request);if(denial)return denial;
+ const denial=await requireLocalPrototype(request);if(denial)return denial;
  const equipment=await prisma.equipment.findMany({orderBy:{identifier:"asc"},take:300});
  return NextResponse.json({equipment},{headers:{"Cache-Control":"no-store"}});
 }
 export async function POST(request:Request){
- const denial=requireLocalPrototype(request);if(denial)return denial;
+ const denial=await requireLocalPrototype(request);if(denial)return denial;
  const parsed=input.safeParse(await request.json().catch(()=>null));
  if(!parsed.success)return NextResponse.json({error:"Invalid equipment details"},{status:400});
  const {calibrationDue,...rest}=parsed.data;

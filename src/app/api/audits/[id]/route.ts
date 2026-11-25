@@ -1,9 +1,11 @@
+import {getSession} from "@/lib/local-auth";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import type {Prisma} from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireLocalPrototype } from "@/lib/dev-api";
 import { buildAuditReport } from "@/lib/audit-report";
+import {auditReviewState} from "@/lib/audit-review";
 import {reportDigest} from "@/lib/report-snapshot";
 
 export const runtime="nodejs";
@@ -24,7 +26,7 @@ const update=z.object({status:status.optional(),record:record.optional()}).refin
 const dbStatus={"Scheduled":"SCHEDULED","In progress":"IN_PROGRESS","In review":"IN_REVIEW","Completed":"COMPLETED"} as const;
 
 export async function GET(_request:Request,context:{params:Promise<{id:string}>}) {
-  const denied=requireLocalPrototype(_request);if(denied)return denied;
+  const denied=await requireLocalPrototype(_request);if(denied)return denied;
   const {id}=await context.params;
   try {
     const audit=await prisma.audit.findUnique({where:{id},include:{record:true,project:true,equipmentLinks:{include:{equipment:true}}}});
@@ -34,7 +36,7 @@ export async function GET(_request:Request,context:{params:Promise<{id:string}>}
 }
 
 export async function PATCH(request:Request,context:{params:Promise<{id:string}>}) {
-  const denied=requireLocalPrototype(request);if(denied)return denied;
+  const denied=await requireLocalPrototype(request);if(denied)return denied;
   const {id}=await context.params;
   let payload:unknown;
   try{payload=await request.json();}catch{return NextResponse.json({error:"Invalid JSON body"},{status:400});}
@@ -54,6 +56,9 @@ export async function PATCH(request:Request,context:{params:Promise<{id:string}>
     let sealingReport:Prisma.InputJsonValue|null=null;
     if(parsed.data.status==="Completed"){
       if(parsed.data.record)return NextResponse.json({error:"Save the assessment separately before requesting completion"},{status:409});
+      if(exists.status!=="IN_REVIEW")return NextResponse.json({error:"Audit must be In review before completion"},{status:409});
+      const review=await auditReviewState(id);
+      if(!review.current)return NextResponse.json({error:"A current independent approval is required before completion"},{status:409});
       const current=await buildAuditReport(id);
       if(!current)return NextResponse.json({error:"Audit not found"},{status:404});
       if(!current.readiness.ready)return NextResponse.json({error:"Audit not ready for completion",blockers:current.readiness.blockers},{status:409});
@@ -65,7 +70,7 @@ export async function PATCH(request:Request,context:{params:Promise<{id:string}>
       if(parsed.data.record)await tx.auditRecord.upsert({
         where:{auditId:id},create:{auditId:id,content:parsed.data.record},update:{content:parsed.data.record}
       });
-      await tx.auditEvent.create({data:{auditId:id,actor:process.env.SURFACE_AUDIT_ADMIN_USERNAME!,action:"AUDIT_UPDATED",details:{status:parsed.data.status??null,recordUpdated:Boolean(parsed.data.record)}}});
+      await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:parsed.data.status==="Completed"?"AUDIT_SEALED":"AUDIT_UPDATED",details:{status:parsed.data.status??null,recordUpdated:Boolean(parsed.data.record)}}});
     });
     return NextResponse.json({ok:true});
   }catch{return NextResponse.json({error:"Unable to save audit record."},{status:500});}

@@ -15,6 +15,6 @@ export default function Login(){
       window.location.assign("/");
     }catch(e){setError(e instanceof Error?e.message:"Unable to sign in")}finally{setBusy(false);setPassword("")}
   }
-  return <main className="login-screen"><div className="login-card"><div className="login-brand">≋ <span>SURFACE Audit</span></div><p className="eyebrow">LOCAL DEVELOPMENT ACCESS</p><h1>Sign in to your audit workspace</h1><p className="subtitle">Single-operator authentication for the local PostgreSQL prototype. Not an enterprise identity solution.</p>
+  return <main className="login-screen"><div className="login-card"><div className="login-brand">≋ <span>SURFACE Audit</span></div><p className="eyebrow">LOCAL DEVELOPMENT ACCESS</p><h1>Sign in to your audit workspace</h1><p className="subtitle">Individual local development accounts with viewer, editor, reviewer and administrator roles. Not an enterprise identity solution.</p>
   <form onSubmit={submit}><label>Username<input autoComplete="username" required value={username} onChange={e=>setUsername(e.target.value)}/></label><label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<p role="alert" className="storage-error">{error}</p>}<button className="primary" type="submit" disabled={busy}>{busy?"Signing in…":"Sign in"}</button></form><p className="login-foot"><Link href="/">Return to dashboard</Link> · Development-only authentication</p></div></main>
 }

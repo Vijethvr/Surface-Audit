@@ -220,7 +220,9 @@ try {
   const root="/api/audits/"+encodeURIComponent(engagementId)+"/findings/"+encodeURIComponent(findingId);
   const blockedCompletion=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({status:"Completed"})});
   assert.equal(blockedCompletion.response.status,409);
-  assert.ok(blockedCompletion.body.blockers.some(reason=>reason.includes("Finding")));
+  assert.match(blockedCompletion.body.error,/In review|approval/);
+  const pendingReport=await request("/api/audits/"+encodeURIComponent(engagementId)+"/report");
+  assert.ok(pendingReport.body.report.readiness.blockers.some(reason=>reason.includes("Finding")));
   const closeEarly=await request(root,{method:"PATCH",body:JSON.stringify({status:"CLOSED"})});
   assert.equal(closeEarly.response.status,409);
   const actionCreated=await request(root+"/actions",{method:"POST",body:JSON.stringify({
@@ -302,6 +304,61 @@ try {
   assert.equal(updatedDraft.response.status,200);
   assert.equal(updatedDraft.body.report.requirements[0].evidenceFiles[0].sha256,uploaded.body.asset.sha256);
 
+  // v1.2: database roles, review separation, revocable sessions.
+  const adminCookie=sessionCookie;
+  const reviewRoot="/api/audits/"+encodeURIComponent(engagementId)+"/review";
+  const reviewBefore=await request(reviewRoot);
+  assert.equal(reviewBefore.response.status,200);
+  assert.equal(reviewBefore.body.current,false);
+  const needApproval=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({status:"Completed"})});
+  assert.equal(needApproval.response.status,409);
+  const prepareForReview=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({status:"In review"})});
+  assert.equal(prepareForReview.response.status,200);
+  const selfReview=await request(reviewRoot,{method:"POST",body:JSON.stringify({decision:"APPROVED",note:"I independently checked this record"})});
+  assert.equal(selfReview.response.status,403,"Preparing operator must not approve own work");
+  async function signInAs(username){
+   const attempt=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username,password:"CI-password-only-not-for-real-users"})});
+   assert.equal(attempt.response.status,200,JSON.stringify(attempt.body));
+   sessionCookie=attempt.response.headers.get("set-cookie")?.split(";")[0]??"";
+   return sessionCookie;
+  }
+  const viewerCookie=await signInAs("ci-viewer");
+  const viewerRead=await request(reviewRoot);
+  assert.equal(viewerRead.response.status,200);
+  const viewerWrite=await request("/api/clients",{method:"POST",body:JSON.stringify({name:"Viewer rejected"})});
+  assert.equal(viewerWrite.response.status,403);
+  const viewerApproval=await request(reviewRoot,{method:"POST",body:JSON.stringify({decision:"APPROVED",note:"Viewer cannot authorize"})});
+  assert.equal(viewerApproval.response.status,403);
+  await signInAs("ci-editor");
+  const editorReview=await request(reviewRoot,{method:"POST",body:JSON.stringify({decision:"APPROVED",note:"Editor cannot approve"})});
+  assert.equal(editorReview.response.status,403);
+  await signInAs("ci-reviewer");
+  const reviewerChanges=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({status:"Scheduled"})});
+  assert.equal(reviewerChanges.response.status,403);
+  const approved=await request(reviewRoot,{method:"POST",body:JSON.stringify({decision:"APPROVED",note:"Independent reviewer confirms the saved audit readiness checks"})});
+  assert.equal(approved.response.status,201,JSON.stringify(approved.body));
+  assert.equal((await request(reviewRoot)).body.current,true);
+  sessionCookie=adminCookie;
+  // Editing an assessment after independent approval must invalidate the approval.
+  const changedAfterReview=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({record:{...custom,summary:"Summary amended after reviewer approval"}})});
+  assert.equal(changedAfterReview.response.status,200);
+  assert.equal((await request(reviewRoot)).body.current,false);
+  const staleApproval=await request("/api/audits/"+encodeURIComponent(engagementId),{method:"PATCH",body:JSON.stringify({status:"Completed"})});
+  assert.equal(staleApproval.response.status,409);
+  await signInAs("ci-reviewer");
+  const reapproved=await request(reviewRoot,{method:"POST",body:JSON.stringify({decision:"APPROVED",note:"Re-reviewed after updated summary was saved in the audit"})});
+  assert.equal(reapproved.response.status,201,JSON.stringify(reapproved.body));
+  sessionCookie=adminCookie;
+  const adminUsers=await request("/api/operators");
+  assert.equal(adminUsers.response.status,200);
+  assert.ok(adminUsers.body.operators.some(user=>user.username==="ci-viewer"&&user.role==="VIEWER"));
+  // Deactivation revokes an existing viewer session in the database.
+  const viewerId=adminUsers.body.operators.find(user=>user.username==="ci-viewer").id;
+  const deactivate=await request("/api/operators",{method:"PATCH",body:JSON.stringify({id:viewerId,active:false})});
+  assert.equal(deactivate.response.status,200);
+  sessionCookie=viewerCookie;
+  assert.equal((await request(reviewRoot)).response.status,401);
+  sessionCookie=adminCookie;
   const completion=await request("/api/audits/"+encodeURIComponent(engagementId),{
     method:"PATCH",body:JSON.stringify({status:"Completed"})
   });
@@ -345,9 +402,8 @@ try {
   const listedFindings=await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings");
   assert.equal(listedFindings.body.findings[0].actions[0].verifiedBy,"Second reviewer");
   const historyV7=await request("/api/audits/"+encodeURIComponent(engagementId)+"/events");
-  assert.deepEqual(historyV7.body.events.map(e=>e.action).slice(-7),[
-    "EVIDENCE_REFERENCE_ADDED","FINDING_CREATED","CAPA_CREATED","CAPA_STATUS_CHANGED","FINDING_STATUS_CHANGED","EVIDENCE_FILE_ADDED","AUDIT_UPDATED"
-  ]);
+  assert.deepEqual(historyV7.body.events.map(e=>e.action).slice(-3),["AUDIT_UPDATED","REVIEW_APPROVED","AUDIT_SEALED"]);
+  assert.equal((await request(reviewRoot)).body.current,true);
 
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
   assert.equal(logout.response.status,200);
@@ -364,6 +420,8 @@ try {
   assert.equal((await request("/api/operations/export?type=audits")).response.status,401);
   assert.equal((await request(assetRoot)).response.status,401);
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/dossier")).response.status,401);
+  assert.equal((await request(reviewRoot)).response.status,401);
+  assert.equal((await request("/api/operators")).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
   child.kill("SIGTERM");

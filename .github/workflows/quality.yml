@@ -77,7 +77,7 @@ jobs:
         run: npm run db:generate
       - name: Create isolated test schema
         run: npx prisma db push --skip-generate
-      - name: Configure isolated test-only session credentials
-        run: node scripts/ci-auth-env.mjs
+      - name: Seed test-only operators and roles
+        run: node scripts/seed-ci-operators.mjs
       - name: Validate audit persistence over HTTP
         run: node scripts/smoke-db.mjs
