@@ -17,6 +17,7 @@ type Report={
 export default function ReportView(){
  const params=useParams<{id:string}>();
  const [report,setReport]=useState<Report|null>(null);
+ const [integrity,setIntegrity]=useState<{snapshot:boolean;sha256:string|null;verified:boolean;capturedAt:string|null}|null>(null);
  const [error,setError]=useState("");
  const [loading,setLoading]=useState(true);
  const refresh=useCallback(async()=>{
@@ -25,7 +26,7 @@ export default function ReportView(){
    const response=await fetch("/api/audits/"+encodeURIComponent(params.id)+"/report",{cache:"no-store"});
    const json=await response.json();
    if(!response.ok)throw Error(json.error||"Report unavailable");
-   setReport(json.report);
+   setReport(json.report);setIntegrity(json.integrity??null);
   }catch(err){setError(err instanceof Error?err.message:"Unable to retrieve report")}finally{setLoading(false)}
  },[params.id]);
  useEffect(()=>{void refresh()},[refresh]);
@@ -41,6 +42,11 @@ export default function ReportView(){
   <header className="report-head"><p className="eyebrow">SURFACE Audit · MEASUREMENT ASSURANCE</p><h1>{report.audit.title}</h1><p className="report-watermark">{report.reportStatus}</p>
    <p>This document summarizes development-stage records. It does not certify conformity, traceability, independent approval or evidentiary authenticity.</p>
   </header>
+  {integrity&&<section className="report-section"><h2>Report copy integrity</h2>
+   <p><b>{integrity.snapshot?(integrity.verified?"Stored snapshot digest verified":"WARNING: stored report digest does not match"):"Live unapproved draft — no sealed report copy"}</b></p>
+   {integrity.sha256&&<p><b>SHA-256:</b> <code style={{overflowWrap:"anywhere"}}>{integrity.sha256}</code></p>}
+   {integrity.capturedAt&&<p>Captured: {new Date(integrity.capturedAt).toLocaleString("en-GB")}</p>}
+   <p>Digest verification detects mismatch against a saved value; a database administrator could replace both. No independent third-party signature or approval is implied.</p></section>}
   <section className="report-metadata">
    <div><small>Audit ID</small><b>{report.audit.id}</b></div>
    <div><small>Client</small><b>{report.audit.client}</b></div>
