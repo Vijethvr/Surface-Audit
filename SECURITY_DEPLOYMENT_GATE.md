@@ -15,7 +15,7 @@
 
 | Threat / attacker | Existing protections | Gaps / required decision |
 |---|---|---|
-| Cross-site form submission / hostile web origin | Origin equals loopback Host for state-changing APIs; SameSite Strict cookie; v1.8 rejects nonloopback/mismatched Host on protected APIs and login | No independent penetration test; browser extensions/local malware remain possible |
+| Cross-site form submission / hostile web origin | Origin equals loopback Host for state-changing APIs; SameSite Strict cookie; v1.8 checks loopback/mismatched request metadata on protected APIs and login, but Next.js may normalize raw Host headers | No independent penetration test; browser extensions/local malware remain possible |
 | Remote access caused by an accidentally exposed development server | Development-only API flag, explicit local preflight, loopback Host and URL checks | **Not a firewall**: listener binding and network policies need independent verification; no supported production server |
 | Password guessing and session theft | scrypt password hash, local lockout after five failures, opaque session hash stored in DB, session expiry/revocation | No MFA, per-IP throttling, credential-breach checks, concurrent-failure atomicity or device trust |
 | Unauthorized role escalation and inappropriate approval | Role checks on HTTP routes, independent reviewer role, preparer separation, approval digest, audit revision checks | DB superuser bypasses checks; no verified HR identity or accredited electronic signature |
@@ -41,7 +41,7 @@
 
 ## 4. Automated coverage added in v1.8
 
-The PostgreSQL HTTP test suite checks unauthorized reads and edits, role separation, self-review rejection, session revocation, csrf Origin mismatch, spoofed Host, mismatched origin port, HttpOnly/SameSite session cookies and cache headers. The signing suite tests independently pinned public-key enrollment, unknown-key rejection, correct-key approval, wrong key and passphrase, report/evidence tampering and key revocation. **These tests cover selected threats; they are not a comprehensive attack simulation.**
+The PostgreSQL HTTP test suite checks unauthorized reads and edits, role separation, self-review rejection, session revocation, csrf Origin mismatch, visible request metadata, mismatched origin port, HttpOnly/SameSite session cookies and cache headers. The signing suite tests independently pinned public-key enrollment, unknown-key rejection, correct-key approval, wrong key and passphrase, report/evidence tampering and key revocation. **These tests cover selected threats; they are not a comprehensive attack simulation.**
 
 ## 5. Next safe security milestones
 
