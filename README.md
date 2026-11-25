@@ -157,3 +157,17 @@ The audit workspace now includes an **Evidence file vault** next to the existing
 For a new **disposable** local development database, regenerate Prisma Client and run `npm run db:migrate -- --name evidence_file_vault`. Back up any existing local development database first. The isolated GitHub CI job creates tables using `prisma db push`, not production database migrations, and verifies upload/download, permission rejection, sealed-audit behavior and attached-file manifests.
 
 **Current deployment gate:** Multi-user role permissions, actual independent approval, document malware scanning, externally anchored evidence hashes, tested production migration history, and encrypted/offsite backups must be implemented and reviewed before any external deployment or real customer usage.
+
+### Portable audit dossier and offline verification
+
+The **Export audit dossier** link on `/reports/:id` downloads an authenticated JSON bundle containing the saved audit report and its attached files encoded as base64. Before exporting, the server recalculates all attachment hashes and refuses to package records with mismatches. Export is limited to 12 MiB of original attachment bytes; use individual download links for larger collections.
+
+To verify a downloaded dossier on a machine with Node.js installed:
+
+```bat
+node scripts\verify-dossier.mjs C:\path\to\surface-audit-dossier-ID.json
+```
+
+The offline verifier checks the report SHA-256, the embedded evidence bytes and sizes, file identifiers and the report's attached-file manifest. It returns a non-zero exit code when it detects a mismatch. CI tests also alter an attachment and report field to confirm failures are detected.
+
+**Security boundary:** A JSON file with embedded hashes does not establish the identity of the author, an authoritative timestamp, or an independently anchored signature. Someone who can replace the entire dossier can also recalculate its embedded hashes. Treat this as a portable, internally verifiable **development copy**, not an approved record or preservation archive. Exported bundles include full uploaded file contents and require appropriate handling; do not export confidential customer records from this prototype.
