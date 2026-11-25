@@ -1,3 +1,4 @@
+import {getSession} from "@/lib/local-auth";
 import {requireEditableAudit} from "@/lib/require-editable-audit";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -22,7 +23,7 @@ export async function PUT(request:Request,context:{params:Promise<{id:string}>})
  await prisma.$transaction(async tx=>{
    await tx.auditEquipment.deleteMany({where:{auditId:id}});
    if(ids.length)await tx.auditEquipment.createMany({data:ids.map(equipmentId=>({auditId:id,equipmentId}))});
-   await tx.auditEvent.create({data:{auditId:id,actor:process.env.SURFACE_AUDIT_ADMIN_USERNAME!,action:"EQUIPMENT_ASSIGNED",details:{equipmentIds:ids}}});
+   await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"EQUIPMENT_ASSIGNED",details:{equipmentIds:ids}}});
  });
  return NextResponse.json({ok:true,assignedCount:ids.length},{headers:{"Cache-Control":"no-store"}});
 }
