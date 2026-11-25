@@ -70,7 +70,7 @@ export async function PATCH(request:Request,context:{params:Promise<{id:string}>
       if(parsed.data.record)await tx.auditRecord.upsert({
         where:{auditId:id},create:{auditId:id,content:parsed.data.record},update:{content:parsed.data.record}
       });
-      await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:"AUDIT_UPDATED",details:{status:parsed.data.status??null,recordUpdated:Boolean(parsed.data.record)}}});
+      await tx.auditEvent.create({data:{auditId:id,actor:(await getSession(request))!.username,action:parsed.data.status==="Completed"?"AUDIT_SEALED":"AUDIT_UPDATED",details:{status:parsed.data.status??null,recordUpdated:Boolean(parsed.data.record)}}});
     });
     return NextResponse.json({ok:true});
   }catch{return NextResponse.json({error:"Unable to save audit record."},{status:500});}
