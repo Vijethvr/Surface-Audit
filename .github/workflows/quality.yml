@@ -81,6 +81,8 @@ jobs:
         run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
       - name: Verify migration ledger
         run: npx prisma migrate status
+      - name: Inspect disposable database adoption status
+        run: node scripts/inspect-local-db.mjs
       - name: Seed test-only operators and roles
         run: node scripts/seed-ci-operators.mjs
       - name: Validate audit persistence over HTTP
