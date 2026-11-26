@@ -991,7 +991,7 @@ try {
   assert.equal(updatedConversation.body.turns.length,2);
   assert.equal(updatedConversation.body.turns[1].kind,"CLARIFICATION");
   assert.equal(updatedConversation.body.turns[1].requirementCode,firstUnmentioned.code);
-  assert.equal(updatedConversation.body.transcript,procedureTurn+"\\n"+clarification);
+  assert.equal(updatedConversation.body.transcript,procedureTurn+String.fromCharCode(10)+clarification);
   assert.ok(updatedConversation.body.coverage.find(c=>c.code===firstUnmentioned.code).sourceTurnIds.includes(updatedConversation.body.turns[1].id));
   assert.ok(updatedConversation.body.nextQuestions.some(q=>q.code===firstUnmentioned.code));
   const conversationAnalysis=await request(procedureRoot+"/analyze",{method:"POST",body:JSON.stringify({
