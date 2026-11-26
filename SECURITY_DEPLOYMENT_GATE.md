@@ -67,3 +67,8 @@ The new management review is **not** a trust boundary or compliance rating. Auth
 ## v2.2 encrypted vault custody safety boundary
 
 `scripts/vault-custody.mjs` copies an already encrypted local recovery vault into a separately selected existing archive directory; verifies byte-for-byte SHA-256 checksums and maintains an accompanying editable local receipt. It refuses overwrite, label traversal and recognized symlink paths. Listing and retention planning are read-only and do not delete anything. These are operational safeguards only: the tool does not decrypt vaults, verify GCM tags, guarantee recovery key access, demonstrate restore success, certify offsite separation or implement trusted timestamps/independently immutable retention. Continue independent decrypt + populated restore drills, separate passphrase custody and manual retention approval. No real client data or public deployment.
+
+
+## v2.3 role-route assurance matrix
+
+CI exercises selected authenticated HTTP endpoints using a full role roster and anonymous sessions, verifying expected read scopes and denying disallowed mutations, independent reviews and admin monitoring. It also repeats hostile and missing Origin checks with authenticated admin/editor cookies. This guards against accidental permission regressions when API handlers evolve, but **does not** establish exhaustive route coverage, database row security, client isolation or production safety. Every new API handler must be checked against the role matrix and reviewed independently.

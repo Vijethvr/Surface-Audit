@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import {verifyDossier} from "./verify-dossier.mjs";
+import {exerciseAuthorizationMatrix} from "./authorization-matrix.mjs";
 
 const port = 3017;
 const base = `http://127.0.0.1:${port}`;
@@ -372,6 +373,7 @@ try {
    sessionCookie=attempt.response.headers.get("set-cookie")?.split(";")[0]??"";
    return sessionCookie;
   }
+  await exerciseAuthorizationMatrix({request,signInAs,setCookie:value=>{sessionCookie=value},adminCookie,auditId:engagementId});
   const viewerCookie=await signInAs("ci-viewer");
   assert.equal((await request("/api/security/events")).response.status,403,"Viewer cannot inspect authentication history");
   const viewerRead=await request(reviewRoot);
