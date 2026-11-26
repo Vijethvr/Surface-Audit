@@ -463,7 +463,7 @@ try {
   assert.deepEqual([...incidentCsvBytes.subarray(0,3)],[0xEF,0xBB,0xBF]);
   const incidentCsvBody=incidentCsvBytes.toString("utf8");
   assert.ok(incidentCsvBody.includes("LOGIN_LOCKED"));
-  sessionCookie=viewerCookie;
+  await signInAs("ci-reviewer");
   assert.equal((await request("/api/security/incidents")).response.status,403);
   sessionCookie=adminCookie;
   const adminSecurityLog=await request("/api/security/events");
