@@ -39,7 +39,7 @@ export default function EngagementStudio(){
   <header className="eng-header">
    <div><Link href="/" className="management-return">SURFACE Audit · Workspace</Link><p className="eyebrow">CONSULTING DELIVERY · CLIENT ACCOUNT</p>
     <h1>Engagement Studio</h1><p>Client work, corrective actions, evidence custody and report deliverables in one place.</p></div>
-   <div className="eng-header-actions no-print"><Link href="/delivery">Delivery planning</Link><Link href="/management">Portfolio review</Link>
+   <div className="eng-header-actions no-print"><Link href="/methodologies">New methodology-led project</Link><Link href="/delivery">Delivery planning</Link><Link href="/management">Portfolio review</Link>
     <button type="button" className="secondary" disabled={!detail} onClick={()=>window.print()}>Print client pack / Save PDF</button></div>
   </header>
   <div className="storage-banner no-print">Internal development preview only. Client selection is a reporting filter, not multi-tenant access control. Never use real client data.</div>
