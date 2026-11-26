@@ -60,7 +60,7 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
  const matches=result.proposals.map(p=>{
   const original=record.answers?.[p.code];
   return {...p,existingAnswer:original?.answer??"Not assessed",existingComment:original?.comment??"",
-   existingReference:original?.reference??"",hasExisting:Boolean(original?.answer&&original.answer!=="Not assessed")};
+   existingReference:original?.reference??"",hasExisting:original!==undefined};
  });
  return NextResponse.json({auditRevision:audit.revision,procedureSha256:digestProcedure(procedure),mode,
   modelEnabled:configured(),warning,requirements:clean.length,
