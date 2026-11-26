@@ -12,14 +12,14 @@ export default function ProcedureIntelligence({params}:{params:Promise<{id:strin
  const [analysis,setAnalysis]=useState<Analysis|null>(null);
  const [drafts,setDrafts]=useState<Draft[]>([]);
  const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [notice,setNotice]=useState("");
- const [editable,setEditable]=useState(false);const [answers,setAnswers]=useState<Record<number,string>>({});
+ const [editable,setEditable]=useState(false);const [allowExternal,setAllowExternal]=useState(false);const [answers,setAnswers]=useState<Record<number,string>>({});
  useEffect(()=>{void params.then(p=>setAuditId(p.id))},[params]);
  useEffect(()=>{void fetch("/api/auth/session",{cache:"no-store"}).then(r=>r.json()).then(v=>setEditable(v.role==="ADMIN"||v.role==="EDITOR")).catch(()=>setEditable(false))},[]);
  const clear=()=>{setAnalysis(null);setDrafts([]);setAnswers({});setNotice("")};
  const analyze=async()=>{
   setBusy(true);setError("");clear();
   try{const response=await fetch("/api/audits/"+encodeURIComponent(auditId)+"/procedure/analyze",{
-   method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({procedure})});
+   method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({procedure,allowExternal})});
    const value=await response.json();if(!response.ok)throw Error(value.error||"Unable to analyze procedure");
    setAnalysis(value);
    setDrafts((value.matches as Match[]).map(p=>({...p,checked:false,answer:"Not assessed" as const,comment:p.observation})));
@@ -53,7 +53,7 @@ export default function ProcedureIntelligence({params}:{params:Promise<{id:strin
    <div><h2>1. Procedure narrative</h2><p>Include instrument IDs, certificate references, measurement conditions, acceptance criteria, results and exceptions when you have actually checked them.</p></div>
    <textarea rows={10} maxLength={16000} disabled={busy} value={procedure} onChange={e=>{setProcedure(e.target.value);if(analysis)clear()}}
     placeholder={"Example: We checked the supplier calibration inventory and interval register. The instrument CAL-2027-101 was traced to a current certificate; its serial number matched the register. The temperature was recorded as 20 °C. We did not yet review the operator training records or document the uncertainty budget."}/>
-   <div className="procedure-controls"><span>{procedure.length.toLocaleString()} / 16,000 characters</span>
+   <label className="procedure-consent"><input type="checkbox" checked={allowExternal} onChange={e=>{setAllowExternal(e.target.checked);clear()}}/> Permit sending this narrative to the configured external AI provider, if enabled. Otherwise analyze locally.</label><div className="procedure-controls"><span>{procedure.length.toLocaleString()} / 16,000 characters</span>
     <button type="button" className="primary" disabled={busy||!editable||procedure.trim().length<40} onClick={()=>void analyze()}>{busy?"Analyzing…":"Analyze procedure and suggest sections"}</button></div>
   </section>
   {analysis&&<><section className="procedure-insight"><div><h2>2. Interpretation results</h2>
