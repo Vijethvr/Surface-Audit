@@ -65,7 +65,7 @@ export default function ConsultingRegistry({kind}:{kind:RegistryKind}){
  <p className="registry-info"><a href="/engagements">Open Engagement Studio — client delivery overview and handoff packs</a></p><div className="registry-subheading"><Building2 size={17}/> Clients ({clients.length})</div>
  {clients.length===0?<p className="registry-empty">No clients have been created yet.</p>:<div className="registry-items">{clients.map(c=><article key={c.id}><b>{c.name}</b><small>{c._count.audits} audits · {c._count.projects} projects</small></article>)}</div>}
  <div className="registry-subheading"><FolderKanban size={17}/> Projects ({projects.length})</div>
- {projects.length===0?<p className="registry-empty">No projects have been created yet.</p>:<div className="registry-items">{projects.map(p=><article key={p.id}><b>{p.name}</b><small>{p.client.name}{p.reference?" · "+p.reference:""}</small></article>)}</div>}
+ {projects.length===0?<p className="registry-empty">No projects have been created yet.</p>:<div className="registry-items">{projects.map(p=><article key={p.id}><b>{p.name}</b><small>{p.client.name}{p.reference?" · "+p.reference:""}</small><a href={"/engagements/"+encodeURIComponent(p.id)+"/plan"}>Plan lifecycle and deliverables</a></article>)}</div>}
  </>:kind==="Equipment & Traceability"?<>
  {equipment.length===0?<p className="registry-empty">No instruments registered yet.</p>:<div className="registry-items">{equipment.map(m=><article key={m.id}><b>{m.identifier} · {m.name}</b><small>{m.instrumentType} · {m.calibrationDue?"Due "+new Date(m.calibrationDue).toLocaleDateString("en-GB"):"Calibration due date not recorded"}</small></article>)}</div>}
  </>:<>
