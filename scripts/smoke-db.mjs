@@ -305,7 +305,7 @@ try {
   assert.equal((await request("/api/engagements?format=xml")).response.status,400);
   const studioCsv=await fetch(base+clientScope+"&format=csv",{headers:{Cookie:sessionCookie}});
   assert.equal(studioCsv.status,200);
-  assert.match(studioCsv.headers.get("content-type")??"",/text\\/csv/);
+  assert.ok((studioCsv.headers.get("content-type")??"").includes("text/csv"));
   assert.match(studioCsv.headers.get("content-disposition")??"",/attachment/);
   const studioCsvBytes=Buffer.from(await studioCsv.arrayBuffer());
   assert.deepEqual([...studioCsvBytes.subarray(0,3)],[0xef,0xbb,0xbf]);
