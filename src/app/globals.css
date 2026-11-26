@@ -109,3 +109,9 @@
 .sidebar .navitem[href]{text-decoration:none}
 @media(max-width:1050px){.delivery-scorecard{grid-template-columns:repeat(4,minmax(120px,1fr))}.delivery-toolbar{grid-template-columns:repeat(3,minmax(140px,1fr))}}
 @media(max-width:700px){.delivery-page{padding:23px 15px}.delivery-header{align-items:flex-start;flex-direction:column}.delivery-toolbar{grid-template-columns:repeat(2,minmax(120px,1fr))}.delivery-scorecard{grid-template-columns:repeat(2,minmax(120px,1fr))}.delivery-week-grid{overflow-x:auto;grid-template-columns:repeat(13,45px)}}
+
+.delivery-date-editor{display:grid;gap:5px;min-width:145px}
+.delivery-date-editor input{padding:6px;border:1px solid #c9d7df;border-radius:6px;max-width:160px}
+.delivery-date-editor button,.delivery-date-change{border:0;background:transparent;padding:4px 0;text-align:left;color:#087e88;font-size:11px;font-weight:750}
+.delivery-date-editor button:disabled{opacity:.5;cursor:wait}
+.delivery-date-change{display:block;margin-top:7px;text-decoration:underline}
