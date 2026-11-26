@@ -144,7 +144,7 @@ export default function GuidedExecution({params}:{params:Promise<{id:string}>}){
     <p>{data.reportReadiness.ready?"All report content checks currently pass. Independent review is still required before sealing.":
      data.reportReadiness.blockers.length+" report content blockers remain in the saved records."}</p>
     <div className="guided-readiness-grid"><div><strong>Requirement assessment</strong>
-     {data.items.filter(i=>!i.ready).map(i=><button type="button" key={i.code} onClick={()=>select(i)}>
+     {data.items.filter(i=>!i.ready).map(i=><button type="button" key={i.code} onClick={()=>select(i.index)}>
       {i.code}: {i.blockers.join(", ")}</button>)}
      {data.items.every(i=>i.ready)&&<p>All individual requirement checks have supporting records.</p>}</div>
      <div><strong>Overall report checks</strong><ul>{data.reportReadiness.blockers.map((b,i)=><li key={i}>{b}</li>)}</ul>
