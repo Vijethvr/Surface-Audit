@@ -76,7 +76,7 @@ export default function EngagementStudio(){
    {(tab==="overview"||tab==="handoff")&&<section className="eng-panel"><div className="eng-panel-heading"><h2>Audit and deliverable register</h2><p>{filteredAudits.length} audit engagements in view</p></div>
     <div className="ops-table-wrap"><table><thead><tr><th>Audit / project</th><th>Status & target</th><th>Assurance assets</th><th>Report deliverable</th></tr></thead><tbody>
      {filteredAudits.map(a=><tr key={a.id}><td><strong>{a.title}</strong><small>{a.project??"No project"} · {a.template}{a.templateRevision?" · rev "+a.templateRevision:""}</small>
-      <Link href={"/?audit="+encodeURIComponent(a.id)}>Open audit workspace</Link></td>
+      <Link href={"/?audit="+encodeURIComponent(a.id)}>Open audit workspace</Link><Link href={"/audits/"+encodeURIComponent(a.id)+"/execute"}>Guided execution</Link></td>
       <td>{human(a.status)}<small>Target: {day(a.targetDate)}</small></td>
       <td>{a.counts.findings} findings · {a.counts.evidenceFiles} files<small>{a.counts.evidenceReferences} evidence references · {a.counts.equipment} linked instruments</small></td>
       <td><strong>{a.sealed?"Sealed local snapshot":"Draft / not sealed"}</strong>

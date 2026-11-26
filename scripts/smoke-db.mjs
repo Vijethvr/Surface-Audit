@@ -825,6 +825,70 @@ try {
   const standaloneCatalog=await request("/api/methodologies");
   assert.ok(standaloneCatalog.body.methodologies.some(x=>x.id===customId));
   assert.equal(standaloneCatalog.body.methodologies.find(x=>x.id===customId).revision,"2.3");
+
+  // v3.5 guided execution: one transaction saves the selected requirement,
+  // a referenced document, a nonconformity finding and an initial CAPA.
+  const guidedId=applied.body.auditIds[0];
+  const guidedRoot="/api/audits/"+encodeURIComponent(guidedId)+"/execution";
+  const guidedInitial=await request(guidedRoot);
+  assert.equal(guidedInitial.response.status,200,JSON.stringify(guidedInitial.body));
+  assert.equal(guidedInitial.response.headers.get("cache-control"),"private, no-store");
+  assert.equal(guidedInitial.body.audit.project.id,generatedId);
+  assert.equal(guidedInitial.body.audit.template.revision,"2.3");
+  assert.equal(guidedInitial.body.counts.total,standard.blueprint.audits[0].criteria.length);
+  assert.equal(guidedInitial.body.counts.assessed,0);
+  const [firstRequirement,secondRequirement]=guidedInitial.body.items.map(item=>item.code);
+  const revision=guidedInitial.body.audit.revision;
+  const missingFinding=await request(guidedRoot+"/step",{method:"POST",body:JSON.stringify({
+   expectedRevision:revision,requirementCode:firstRequirement,answer:"Nonconformity",comment:"Calibration discrepancy",
+   reference:"DOC-22",finding:null,action:null,evidence:null
+  })});
+  assert.equal(missingFinding.response.status,409);
+  assert.equal((await request(guidedRoot)).body.audit.revision,revision);
+  const firstGuided=await request(guidedRoot+"/step",{method:"POST",body:JSON.stringify({
+   expectedRevision:revision,requirementCode:firstRequirement,answer:"Conforms",comment:"Reference certificate reviewed",
+   reference:"CERT-2027-101",evidence:{reference:"CERT-2027-101",description:"Traceability certificate"},
+   finding:null,action:null
+  })});
+  assert.equal(firstGuided.response.status,200,JSON.stringify(firstGuided.body));
+  assert.equal(firstGuided.body.revision,revision+1);
+  assert.ok(firstGuided.body.evidenceId);
+  const staleGuided=await request(guidedRoot+"/step",{method:"POST",body:JSON.stringify({
+   expectedRevision:revision,requirementCode:firstRequirement,answer:"Conforms",comment:"Overwrite attempt",reference:"",finding:null,action:null,evidence:null
+  })});
+  assert.equal(staleGuided.response.status,409);
+  const invalidGuided=await request(guidedRoot+"/step",{method:"POST",body:JSON.stringify({
+   expectedRevision:revision+1,requirementCode:"INVALID-CODE",answer:"Conforms",comment:"Not in checklist",reference:"",finding:null,action:null,evidence:null
+  })});
+  assert.equal(invalidGuided.response.status,400);
+  const inconsistentGuided=await request(guidedRoot+"/step",{method:"POST",body:JSON.stringify({
+   expectedRevision:revision+1,requirementCode:secondRequirement,answer:"Conforms",comment:"No findings permitted",reference:"",
+   finding:{title:"Inconsistent finding",description:"Should reject",severity:"HIGH"},action:null,evidence:null
+  })});
+  assert.equal(inconsistentGuided.response.status,400);
+  const secondGuided=await request(guidedRoot+"/step",{method:"POST",body:JSON.stringify({
+   expectedRevision:revision+1,requirementCode:secondRequirement,answer:"Nonconformity",
+   comment:"Control records did not demonstrate due date compliance",reference:"CAPA-REF-101",
+   evidence:{reference:"CAPA-REF-101",description:"Calibration tracking report"},
+   finding:{title:"Overdue measurement control",description:"Instrument control register lacked current evidence",severity:"HIGH"},
+   action:{description:"Reconcile supplier calibration records",owner:"Quality manager",dueDate:"2027-04-05"}
+  })});
+  assert.equal(secondGuided.response.status,200,JSON.stringify(secondGuided.body));
+  assert.ok(secondGuided.body.findingId&&secondGuided.body.actionId&&secondGuided.body.evidenceId);
+  const guidedFinal=await request(guidedRoot);
+  assert.equal(guidedFinal.response.status,200);
+  assert.equal(guidedFinal.body.audit.revision,revision+2);
+  assert.equal(guidedFinal.body.counts.assessed,2);
+  assert.equal(guidedFinal.body.counts.nonconforming,1);
+  assert.equal(guidedFinal.body.items[0].reference,"CERT-2027-101");
+  assert.equal(guidedFinal.body.items[0].ready,true);
+  assert.equal(guidedFinal.body.items[1].answer,"Nonconformity");
+  assert.equal(guidedFinal.body.items[1].findings[0].id,secondGuided.body.findingId);
+  assert.equal(guidedFinal.body.items[1].findings[0].actions[0].id,secondGuided.body.actionId);
+  assert.equal(guidedFinal.body.items[1].evidence[0].reference,"CAPA-REF-101");
+  assert.ok(guidedFinal.body.reportReadiness.blockers.some(b=>b.includes("Finding")||b.includes("assessment is incomplete")));
+  const guidedHistory=await request("/api/audits/"+encodeURIComponent(guidedId)+"/events");
+  assert.equal(guidedHistory.body.events.filter(e=>e.action==="GUIDED_REQUIREMENT_ASSESSED").length,2);
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
   assert.equal(logout.response.status,200);
   sessionCookie="";
@@ -834,6 +898,8 @@ try {
   assert.equal((await request("/api/templates")).response.status,401);
   assert.equal((await request("/api/projects")).response.status,401);
   assert.equal((await request("/api/methodologies")).response.status,401);
+  assert.equal((await request(guidedRoot)).response.status,401);
+  assert.equal((await request(guidedRoot+"/step",{method:"POST",body:"{}"})).response.status,401);
   assert.equal((await request("/api/methodologies/apply",{method:"POST",body:"{}"})).response.status,401);
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings")).response.status,401);
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/evidence")).response.status,401);

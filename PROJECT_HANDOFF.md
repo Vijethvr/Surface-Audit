@@ -213,3 +213,12 @@ PR #30 confirmed merged into `main` before beginning, merge `95f7cb56d38815d4fbd
 Updated sidebar, Engagement Studio, Clients & Projects and responsive CSS. Full CI HTTP smoke adds list, malformed linked audit key, custom publishing and duplicate refusal, atomic application, expected dates, checklist snapshot lineage and anonymous denial. Keep both Next.js and PostgreSQL/backup/signature CI gates green at final branch SHA; user alone merges.
 
 This remains a local-only prototype; methodology baselines are not guaranteed applicable to any specific client/regulatory framework and the JSON custom editor is intended for internal operators. No production/customer authorization or real client data permitted.
+
+
+## v3.5 Guided Audit Execution — 26 November 2026
+
+PR #31 verified merged to main before starting, merge `54542fa056678aca94440a47ed3e3cb0593d6ea6`. Branch `feat/guided-audit-execution-v3.5` introduces the major workflow `/audits/[id]/execute` backed by `GET /api/audits/[id]/execution` and atomic `POST /api/audits/[id]/execution/step`. The guide navigates each frozen methodology/checklist requirement and supplies assessment/rationale, requirement-linked evidence references, structured findings, optional initial CAPA, and a cross-referenced report readiness view. It is linked from existing Audit Workspace and Engagement Studio. Each POST locks the audit row with revision match, updates only one answer while preserving other checklist and summary fields, optionally writes evidence + finding + action, and appends `GUIDED_REQUIREMENT_ASSESSED` event atomically. A stale edit, sealed audit or invalid nonconformity is rejected. No schema change: reuse existing audit/record/evidence/finding/action/history primitives.
+
+`scripts/smoke-db.mjs` now uses a methodology-created supplier audit to validate end-to-end atomic guided save, duplicate stale rejection, invalid requirement/answer pairing, evidence/finding/CAPA linkage, report blockers, audit events and post-logout denial. README updated. Validate both final GitHub CI jobs and hand the PR to the user for merging; do not merge on user's behalf.
+
+Boundary: this is local-development workflow for synthetic data, not a production client portal, digital signature, evidence verification, or compliance accreditation. Existing independent review and sealed dossier workflow remain authoritative.
