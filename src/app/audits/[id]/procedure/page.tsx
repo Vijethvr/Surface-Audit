@@ -15,6 +15,14 @@ export default function ProcedureIntelligence({params}:{params:Promise<{id:strin
  const [editable,setEditable]=useState(false);const [allowExternal,setAllowExternal]=useState(false);const [answers,setAnswers]=useState<Record<number,string>>({});
  useEffect(()=>{void params.then(p=>setAuditId(p.id))},[params]);
  useEffect(()=>{void fetch("/api/auth/session",{cache:"no-store"}).then(r=>r.json()).then(v=>setEditable(v.role==="ADMIN"||v.role==="EDITOR")).catch(()=>setEditable(false))},[]);
+ useEffect(()=>{if(!auditId||new URLSearchParams(window.location.search).get("from")!=="dialogue")return;
+  let valid=true;
+  void fetch("/api/audits/"+encodeURIComponent(auditId)+"/procedure/dialogue",{cache:"no-store"}).then(async r=>{
+   const body=await r.json();if(!r.ok)throw Error(body.error??"Unable to load saved procedure dialogue");
+   if(valid&&body.transcript){setProcedure(body.transcript);setNotice("Loaded "+body.turns.length+" recorded dialogue turns. Analyze and review before applying any sections.");}
+  }).catch(e=>{if(valid)setError(e instanceof Error?e.message:"Dialogue unavailable")});
+  return()=>{valid=false};
+ },[auditId]);
  const clear=()=>{setAnalysis(null);setDrafts([]);setAnswers({});setNotice("")};
  const analyze=async()=>{
   setBusy(true);setError("");clear();
@@ -40,10 +48,10 @@ export default function ProcedureIntelligence({params}:{params:Promise<{id:strin
   }catch(e){setError(e instanceof Error?e.message:"Unable to save reviewed entries")}finally{setBusy(false)}
  };
  return <main className="procedure-page">
-  <header className="procedure-header"><div><Link className="management-return" href={"/audits/"+encodeURIComponent(auditId)+"/execute"}>Guided audit execution</Link>
+  <header className="procedure-header"><div><Link className="management-return" href={"/audits/"+encodeURIComponent(auditId)+"/copilot"}>Conversational audit copilot</Link>
    <p className="eyebrow">PROCEDURE INTELLIGENCE · EVIDENCE-GROUNDED ASSISTANCE</p>
    <h1>Describe what you actually did.</h1>
-   <p>Write your procedure in ordinary language. Review the suggested audit sections, identify what is missing, and decide what to record.</p></div>
+   <p>Write your procedure in ordinary language, or load the full recorded dialogue. Review suggested sections, identify missing steps, and decide what to record.</p></div>
    <Link href={"/?audit="+encodeURIComponent(auditId)}>Full audit workspace</Link>
   </header>
   <div className="storage-banner">This assistant extracts suggestions from your narrative, not proof of conformity. Never supply confidential customer information or personal data in this development prototype. AI provider use is opt-in at server configuration.</div>
