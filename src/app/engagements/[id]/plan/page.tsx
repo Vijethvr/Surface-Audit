@@ -46,6 +46,7 @@ export default function ProjectLifecycle({params}:{params:Promise<{id:string}>})
    <p>{data?.project.client.name??"Client"}{data?.project.reference?" · "+data.project.reference:""}</p></div>
    <div className="lc-actions no-print"><button className="secondary" type="button" onClick={()=>void refresh()} disabled={busy}>Reload</button>
     <button className="secondary" type="button" onClick={()=>window.print()} disabled={!data}>Print lifecycle pack</button>
+    {id&&<Link className="secondary" href={"/engagements/"+encodeURIComponent(id)+"/pack"}>Assemble deliverables pack</Link>}
     {editable&&<button className="primary" type="button" disabled={busy} onClick={()=>void save()}>Save project plan</button>}</div>
   </header>
   <div className="storage-banner">Internal local-development delivery planning. Acceptance is an operator-recorded acknowledgement, not a client's authenticated approval or legal signature.</div>

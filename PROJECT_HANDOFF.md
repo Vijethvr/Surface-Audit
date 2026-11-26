@@ -191,3 +191,16 @@ The database remains the single source of truth. Source totals are exact; detail
 PR #28 was confirmed merged into `main` at start, merge `239f3ff04dcce85a4230d450227c062932ec41d4`. Branch `feat/project-lifecycle-v3.2` adds versioned `EngagementLifecycle` scoped one-to-one to existing Project plus append-only `EngagementLifecycleEvent`, migration `20261126103000_engagement_lifecycle`, server-side Zod validation and optimistic revision enforcement, stages from PROPOSED through CLOSED, milestone and deliverable status tracking and strict audit-linked internal acceptance (sealed completed audit report required). The full editing workflow lives at `/engagements/[id]/plan`, linked from Engagement Studio and Clients & Projects; printable internal lifecycle pack and history included.
 
 The full PostgreSQL smoke test adds project lifecycle create, stale edit, invalid link, premature closure, unsealed-audit acceptance denial, accepted sealed deliverable, closure immutability, history and anonymous denial. As always verify final commit GitHub Actions and leave PR merge to user. No client-authenticated acceptance, commercial invoicing or production/customer-data approval.
+
+
+## v3.3 Project Deliverables Engine (26 November 2026)
+
+PR #29 verified merged in main before branching (merge `41b39f477e4d0e18c6d824a5cd60e9ee25a0c39f`). Branch `feat/project-deliverables-engine-v3.3` adds:
+- `src/lib/compile-project-pack.ts`: deterministic selection of actual project lifecycle, audits, sealed report digest validation, findings/CAPA summary and evidence manifest (bytes excluded), exact source counts and fail-closed incomplete export.
+- `src/lib/project-pack.ts`: JSON canonicalization, SHA-256 manifest/envelope and CSV formula-injection protection.
+- `src/app/api/projects/[id]/pack/route.ts`: authenticated preview, closure-gated portable JSON and CSV.
+- `src/app/engagements/[id]/pack/page.tsx`: structured print-ready client project handoff sections and export actions, links from Engagement Studio and lifecycle editor.
+- `scripts/verify-project-pack.mjs`: offline checksum/incomplete-content verifier (not signatures or trusted client approvals).
+- HTTP CI regression: draft export rejection, ready package retrieval, verify/tamper checks, CSV correctness and unauthorized denial. Preserve existing full Postgres restore/signature/security tests and update docs.
+
+Limits: source counts exact, exported detail capped to 100 audits/500 CAPA/500 evidence entries and export refuses truncated scope. SHA-256 portable envelope not independently signed; original evidence file bytes not included; signed audit dossiers remain separate. Internal only, not production/real client use. Owner alone merges after **both final-head GitHub Actions jobs succeed**.
