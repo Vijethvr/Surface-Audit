@@ -38,7 +38,7 @@ export default function ManagementPage(){
    <div><Link href="/" className="management-return">SURFACE Audit · Workspace</Link><p className="eyebrow">CONSULTING OPERATIONS · MANAGEMENT REVIEW</p><h1>Audit portfolio management review</h1>
     <p>Decision-ready delivery, corrective-action and risk triage for the local development portfolio.</p>
    </div>
-   <div className="management-actions no-print"><button type="button" className="secondary" onClick={()=>void load()} disabled={busy}>Refresh</button><button type="button" className="primary" onClick={()=>window.print()} disabled={!report}>Print / Save PDF</button></div>
+   <div className="management-actions no-print"><Link href="/delivery">Delivery planner</Link><button type="button" className="secondary" onClick={()=>void load()} disabled={busy}>Refresh</button><button type="button" className="primary" onClick={()=>window.print()} disabled={!report}>Print / Save PDF</button></div>
   </header>
   <div className="management-toolbar no-print">
    <label>Client scope <select value={selectedClient} onChange={e=>setSelectedClient(e.target.value)}><option value="">All sampled clients</option>{report?.clients.map(c=><option key={c} value={c}>{c}</option>)}</select></label>
