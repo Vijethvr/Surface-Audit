@@ -336,3 +336,54 @@
 .procedure-apply{display:flex;align-items:center;justify-content:space-between;gap:20px}
 @media(max-width:900px){.procedure-layout{grid-template-columns:1fr}.procedure-header{flex-direction:column}}
 @media(max-width:630px){.procedure-page{padding:18px 13px}.procedure-insight,.procedure-apply,.procedure-controls{flex-direction:column;align-items:flex-start}}
+
+/* v3.7 conversational procedure intelligence */
+.copilot-page{max-width:1600px;margin:0 auto;padding:34px 32px 75px;color:#17394c}
+.copilot-top{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:22px}
+.copilot-top h1{font-size:clamp(28px,3.6vw,45px);letter-spacing:-1px;margin:8px 0}
+.copilot-top p{color:#658191;font-size:13px}
+.copilot-links{display:flex;flex-wrap:wrap;gap:12px}
+.copilot-links a{color:#087e88;font-size:12px;font-weight:750}
+.copilot-metrics{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:13px;margin:20px 0}
+.copilot-metrics>div{background:#fff;border:1px solid #dde8ed;padding:20px;border-radius:12px}
+.copilot-metrics span{display:block;color:#738d9b;font-size:12px}.copilot-metrics strong{font-size:28px;display:block;margin-top:8px}
+.copilot-tabs{display:flex;gap:5px;border-bottom:1px solid #dde9ed;margin:18px 0}
+.copilot-tabs button{border:0;background:transparent;border-bottom:3px solid transparent;padding:13px 20px;font-size:13px;font-weight:750;color:#607b8d}
+.copilot-tabs button.active{color:#087e88;border-bottom-color:#087e88}
+.copilot-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(320px,.8fr);gap:18px;align-items:start}
+.copilot-main,.copilot-side{background:#fff;border:1px solid #dfe9ed;border-radius:14px;padding:24px}
+.copilot-panel-head{display:flex;justify-content:space-between;gap:18px;align-items:start}
+.copilot-panel-head h2,.copilot-side h2{font-size:19px;margin:0 0 8px}
+.copilot-panel-head p,.copilot-side p,.copilot-empty p,.copilot-hint{font-size:12px;color:#6a8392;line-height:1.65}
+.copilot-empty{padding:26px;border-radius:12px;background:#f4f9f9;margin:18px 0}.copilot-empty h3{font-size:16px}
+.copilot-timeline{display:grid;gap:13px;margin:22px 0}
+.copilot-turn{padding:18px;border:1px solid #e2ebee;background:#fbfdfd;border-radius:12px}
+.copilot-turn>div{display:flex;align-items:center;gap:9px}.copilot-turn strong{font-size:13px}
+.copilot-turn p{font-size:13px;line-height:1.8;white-space:pre-wrap;color:#214356}
+.copilot-turn small{color:#708b99;font-size:11px}
+.copilot-seq{border-radius:50%;background:#d9f1ed;color:#087e88;display:grid;place-items:center;font-weight:800;font-size:12px;width:27px;height:27px}
+.copilot-compose{padding:20px;background:#f0f8f8;border:1px solid #cfe3e3;border-radius:12px}
+.copilot-compose h3{font-size:15px;margin-top:0}.copilot-compose label{font-size:12px;font-weight:750}
+.copilot-compose textarea{display:block;width:100%;min-height:135px;margin:12px 0;padding:14px;border:1px solid #bfd4d9;border-radius:9px;background:white;font-size:13px;line-height:1.65;color:#173d4f}
+.copilot-compose-row{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:12px}
+.copilot-compose-row span{font-size:11px;color:#6a8693}
+.copilot-prompt{display:block;width:100%;border:1px solid #e1e8e9;background:#fbfdfd;border-radius:9px;padding:13px;margin:10px 0;text-align:left}
+.copilot-prompt strong{display:block;font-size:11px;color:#087e88;margin-bottom:6px}
+.copilot-prompt span{font-size:12px;color:#415f70;line-height:1.6}
+.copilot-prompt:disabled{opacity:.65}
+.copilot-divider{height:1px;background:#e5ecee;margin:22px 0}
+.copilot-side h3{font-size:15px;margin:13px 0}
+.copilot-optin{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;color:#567684;margin:14px 0}
+.copilot-review-link{display:block;text-align:center;text-decoration:none;margin-top:14px}
+.copilot-coverage{border:1px solid #e2e9ec;border-radius:10px;padding:17px;margin:14px 0}
+.copilot-coverage-top{display:flex;justify-content:space-between;gap:12px;align-items:start}
+.copilot-coverage-top strong{font-size:13px;line-height:1.5}
+.copilot-state{font-size:11px;border-radius:12px;padding:5px 8px;background:#edf3f5;color:#536f7a;white-space:nowrap}
+.copilot-state.possible_gap,.copilot-state.documentation_gap,.copilot-state.possible_exception{background:#fff1e4;color:#976227}
+.copilot-state.described,.copilot-state.already_recorded{background:#e4f4ec;color:#137254}
+.copilot-coverage blockquote,.copilot-semantic blockquote{white-space:pre-wrap;font-size:12px;line-height:1.7;border-left:3px solid #087e88;padding:10px 15px;background:#f0f9f7;margin:15px 0}
+.copilot-coverage p,.copilot-semantic p{font-size:12px;color:#5a7683;line-height:1.65}
+.copilot-coverage small{display:block;font-size:11px;color:#77929d;margin-bottom:12px}
+.copilot-semantic{border-top:1px solid #dfe9ec;margin-top:24px}.copilot-semantic>div{border-bottom:1px solid #e5edef;padding:12px 0}
+@media(max-width:1000px){.copilot-layout{grid-template-columns:1fr}.copilot-side{grid-row:1}}
+@media(max-width:650px){.copilot-page{padding:18px 13px}.copilot-top{flex-direction:column}.copilot-metrics{grid-template-columns:repeat(2,minmax(115px,1fr))}.copilot-compose-row,.copilot-coverage-top{flex-direction:column;align-items:start}}
