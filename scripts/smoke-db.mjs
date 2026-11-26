@@ -444,6 +444,27 @@ try {
   const viewerId=adminUsers.body.operators.find(user=>user.username==="ci-viewer").id;
   const deactivate=await request("/api/operators",{method:"PATCH",body:JSON.stringify({id:viewerId,active:false})});
   assert.equal(deactivate.response.status,200);
+  // v2.1: time-windowed incident review, admin isolation and bounded CSV export.
+  const incidentReview=await request("/api/security/incidents?hours=168&limit=100");
+  assert.equal(incidentReview.response.status,200,JSON.stringify(incidentReview.body));
+  assert.ok(incidentReview.body.total>=1);
+  assert.ok(incidentReview.body.summary.some(row=>row.type==="LOGIN_LOCKED"));
+  assert.ok(incidentReview.body.authenticationFailuresAndLockouts>=1);
+  assert.equal(incidentReview.response.headers.get("cache-control"),"private, no-store");
+  assert.equal((await request("/api/security/incidents?hours=0")).response.status,400);
+  assert.equal((await request("/api/security/incidents?hours=168&limit=501")).response.status,400);
+  assert.equal((await request("/api/security/incidents?type=UNRECOGNIZED")).response.status,400);
+  assert.equal((await request("/api/security/incidents?format=xml")).response.status,400);
+  const incidentCsvResponse=await fetch(base+"/api/security/incidents?hours=168&format=csv",{headers:{Cookie:sessionCookie}});
+  assert.equal(incidentCsvResponse.status,200);
+  assert.match(incidentCsvResponse.headers.get("content-type")??"",/text\\/csv/);
+  assert.match(incidentCsvResponse.headers.get("content-disposition")??"",/attachment/);
+  const incidentCsvBody=await incidentCsvResponse.text();
+  assert.ok(incidentCsvBody.startsWith("\\uFEFF"));
+  assert.ok(incidentCsvBody.includes("LOGIN_LOCKED"));
+  sessionCookie=viewerCookie;
+  assert.equal((await request("/api/security/incidents")).response.status,403);
+  sessionCookie=adminCookie;
   const adminSecurityLog=await request("/api/security/events");
   assert.ok(adminSecurityLog.body.events.some(e=>e.eventType==="LOGIN_LOCKED"&&e.subjectUsername==="ci-editor"));
   assert.ok(adminSecurityLog.body.events.some(e=>e.eventType==="LOGIN_LOCKOUT_RESET"&&e.actorUsername==="local-admin"));
@@ -550,6 +571,7 @@ try {
   assert.equal((await request(reviewRoot)).response.status,401);
   assert.equal((await request("/api/operators")).response.status,401);
   assert.equal((await request("/api/security/events")).response.status,401);
+  assert.equal((await request("/api/security/incidents")).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
   child.kill("SIGTERM");
