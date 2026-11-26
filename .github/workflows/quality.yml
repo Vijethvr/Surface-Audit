@@ -39,6 +39,8 @@ jobs:
         run: npm run db:generate
       - name: Check bounded security incident exports
         run: node scripts/test-security-incident-csv.mjs
+      - name: Test encrypted vault custody and non-destructive retention
+        run: node scripts/test-vault-custody.mjs
       - name: Typecheck
         run: npm run lint
       - name: Production build
@@ -154,6 +156,24 @@ jobs:
           fi
           echo "PASS: populated database, event history, sealed report and attached evidence restored with matching counts and checksums"
           node scripts/secure-backup.mjs seal /tmp/surface-audit-ci-recovery /tmp/surface-audit-ci-secured
+          mkdir -p /tmp/surface-audit-ci-archive
+          node scripts/vault-custody.mjs store /tmp/surface-audit-ci-secured /tmp/surface-audit-ci-archive ci-backup-001
+          node scripts/vault-custody.mjs verify /tmp/surface-audit-ci-archive ci-backup-001
+          node scripts/vault-custody.mjs inventory /tmp/surface-audit-ci-archive
+          node scripts/vault-custody.mjs plan /tmp/surface-audit-ci-archive 2
+          cmp /tmp/surface-audit-ci-archive/ci-backup-001/surface-audit.vault /tmp/surface-audit-ci-secured/surface-audit.vault
+          if node scripts/vault-custody.mjs store /tmp/surface-audit-ci-secured /tmp/surface-audit-ci-archive ci-backup-001; then
+            echo "ERROR: encrypted archive overwrite was accepted"
+            exit 1
+          fi
+          cp /tmp/surface-audit-ci-archive/ci-backup-001/surface-audit.vault /tmp/surface-audit-ci-archive/ci-backup-001/untampered.vault
+          printf damaged >> /tmp/surface-audit-ci-archive/ci-backup-001/surface-audit.vault
+          if node scripts/vault-custody.mjs verify /tmp/surface-audit-ci-archive ci-backup-001; then
+            echo "ERROR: damaged custody vault was accepted"
+            exit 1
+          fi
+          mv /tmp/surface-audit-ci-archive/ci-backup-001/untampered.vault /tmp/surface-audit-ci-archive/ci-backup-001/surface-audit.vault
+          node scripts/vault-custody.mjs verify /tmp/surface-audit-ci-archive ci-backup-001
           node scripts/secure-backup.mjs unseal /tmp/surface-audit-ci-secured /tmp/surface-audit-ci-unsealed
           node scripts/local-recovery.mjs verify /tmp/surface-audit-ci-unsealed
           cmp /tmp/surface-audit-ci-unsealed/surface-audit.backup /tmp/surface-audit-ci-recovery/surface-audit.backup
