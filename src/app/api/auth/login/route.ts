@@ -21,24 +21,26 @@ export async function POST(request:Request){
  const data=credentials as {username?:unknown;password?:unknown}|null;
  if(!data||typeof data.username!=="string"||typeof data.password!=="string"||
   data.username.length>120||data.password.length>1024)return invalid();
+ const username=data.username;
+ const password=data.password;
 
  const result=await prisma.$transaction(async tx=>{
   // A locked row ensures no two attempts can load the same old failure count.
   // Parameterization prevents username SQL injection.
-  const matching=await tx.$queryRaw<{id:string}[]>`SELECT "id" FROM "Operator" WHERE "username"=${data.username} FOR UPDATE`;
+  const matching=await tx.$queryRaw<{id:string}[]>`SELECT "id" FROM "Operator" WHERE "username"=${username} FOR UPDATE`;
   if(matching.length===0){
-   verifyPassword(data.password,dummyHash);
+   verifyPassword(password,dummyHash);
    return null;
   }
   const account=await tx.operator.findUnique({where:{id:matching[0].id}});
   if(!account){
-   verifyPassword(data.password,dummyHash);
+   verifyPassword(password,dummyHash);
    return null;
   }
   const now=new Date();
   const locked=Boolean(account.loginLockedUntil&&account.loginLockedUntil>now);
   // Equalize the hashing work of unknown, disabled and locked accounts.
-  const verified=verifyPassword(data.password,account.active&&!locked?account.passwordHash:dummyHash);
+  const verified=verifyPassword(password,account.active&&!locked?account.passwordHash:dummyHash);
   if(!account.active||locked||!verified){
    if(account.active&&!locked){
     const recent=Boolean(account.lastFailedLoginAt&&now.getTime()-account.lastFailedLoginAt.getTime()<lockoutWindowMs);
