@@ -30,7 +30,8 @@ export function buildDialogueView(turns:Turn[],requirements:Requirement[],saved:
   // A response tied to a specific requirement is always relevant to that
   // requirement even if local keyword matching missed a technical synonym.
   const direct=turns.filter(t=>t.requirementCode===r.code);
-  const cited=fragments.length?[fragments[0].excerpt]:direct.map(t=>t.text);
+  // Prefer an explicit question response over inferred keyword matches elsewhere.
+  const cited=direct.length?[direct[direct.length-1].text]:fragments.length?[fragments[0].excerpt]:[];
   const excerpt=cited[0]??null;
   let coverage:Coverage="unmentioned";
   if(excerpt){
