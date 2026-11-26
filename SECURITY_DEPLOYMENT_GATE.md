@@ -72,3 +72,8 @@ The new management review is **not** a trust boundary or compliance rating. Auth
 ## v2.3 role-route assurance matrix
 
 CI exercises selected authenticated HTTP endpoints using a full role roster and anonymous sessions, verifying expected read scopes and denying disallowed mutations, independent reviews and admin monitoring. It also repeats hostile and missing Origin checks with authenticated admin/editor cookies. This guards against accidental permission regressions when API handlers evolve, but **does not** establish exhaustive route coverage, database row security, client isolation or production safety. Every new API handler must be checked against the role matrix and reviewed independently.
+
+
+## v2.4 concurrency-resistant local authentication
+
+The v2.4 local sign-in implementation serializes concurrent attempts for the same PostgreSQL operator record using `SELECT ... FOR UPDATE` in a Prisma transaction; password failure count, lockout state, authentication security event and successful session issuance commit atomically. CI attempts concurrent wrong-password requests and proves an exact five-failure lockout followed by administrator reset. A database lock is not rate limiting; account-lockout denial of service, unauthenticated high-volume requests, missing MFA/SSO, stolen session cookies and production network identity remain material risks. No real-customer use or deployment approval.

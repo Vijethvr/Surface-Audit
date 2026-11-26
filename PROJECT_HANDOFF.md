@@ -163,3 +163,10 @@ This is not external immutable retention or verified offsite backup. Custody rec
 At branch creation PR #24 was verified merged into `main` (merge `df95b5fccfd7f7cd289780dbc894c8ccb7321772`). Branch `feat/authorization-assurance-v2.3` adds `scripts/authorization-matrix.mjs`, a declarative live-HTTP permission regression against real ephemeral PostgreSQL data and individually authenticated ADMIN/EDITOR/REVIEWER/VIEWER sessions, plus unauthenticated denials. It is invoked from `scripts/smoke-db.mjs` before role-specific audit workflow testing. It explicitly tests core read scopes, admin-only incident/account endpoints, disallowed writes and reviews, and cross-origin/missing-origin defenses. Keep the full existing signature, backup, custody and management review CI checks. Before marking ready verify both final-commit CI jobs pass. Owner alone merges.
 
 Known limits: enumerated regression probes are not comprehensive authorization proof, all roles still see cross-client data, no production tenancy or external penetration testing; prototype remains local development only.
+
+
+## v2.4 authentication concurrency milestone (26 November 2026)
+
+PR #25 verified merged to `main` (merge commit `916e5b0fce5b629c8f6dea55acf298986f244fd3`) before creating `feat/atomic-auth-lockout-v2.4`. This milestone replaces local login read/modify/write counters with an operator-level PostgreSQL row lock and atomic Prisma transaction for failure counts, lockout expiration, successful reset, security-event persistence and session issuance. All password outcomes are generic; the code makes dummy scrypt work for unknown/disabled/locked identities. The CI smoke test exercises seven concurrent invalid HTTP credentials, exact 5-attempt lockout, correct-password rejection during lockout, administrator reset and successful login.
+
+Preserve local-development-only status. Remaining security gaps include IP/device throttling, DoS protection, MFA/SSO, independently monitored auth attempts, production hardening and independent security testing. **User alone merges after successful final GitHub CI**. Always re-check live repository and actions.
