@@ -945,6 +945,77 @@ try {
   const procedureEvents=await request("/api/audits/"+encodeURIComponent(guidedId)+"/events");
   assert.ok(procedureEvents.body.events.some(e=>e.action==="PROCEDURE_MAPPING_APPLIED"));
   assert.equal((await request(procedureRoot+"/analyze",{method:"POST",body:JSON.stringify({procedure:"too short"})})).response.status,400);
+
+  // v3.7 conversational copilot: persistent, source-linked procedure turns,
+  // domain-specific clarification questions and revision-aware history.
+  const conversationRoot="/api/audits/"+encodeURIComponent(guidedId)+"/procedure/dialogue";
+  const startConversation=await request(conversationRoot);
+  assert.equal(startConversation.response.status,200,JSON.stringify(startConversation.body));
+  assert.equal(startConversation.response.headers.get("cache-control"),"private, no-store");
+  assert.equal(startConversation.body.turns.length,0);
+  const conversationRevision=startConversation.body.audit.revision;
+  const procedureTurn="We checked the supplier calibration certificates and traceability chain against the instrument register. Certificate CERT-2027-901 was inspected and the calibration interval recorded. We did not perform the operator competence review because training evidence was not available.";
+  const firstTurn=await request(conversationRoot,{method:"POST",body:JSON.stringify({
+   expectedRevision:conversationRevision,kind:"PROCEDURE",text:procedureTurn,requirementCode:null
+  })});
+  assert.equal(firstTurn.response.status,201,JSON.stringify(firstTurn.body));
+  assert.equal(firstTurn.body.sequence,1);
+  assert.equal(firstTurn.body.revision,conversationRevision+1);
+  const currentConversation=await request(conversationRoot);
+  assert.equal(currentConversation.body.turns.length,1);
+  assert.equal(currentConversation.body.turns[0].text,procedureTurn);
+  assert.equal(currentConversation.body.turns[0].author,"local-admin");
+  assert.equal(currentConversation.body.audit.dialogueRevision,1);
+  assert.ok(currentConversation.body.coverage.some(c=>c.coverage!=="unmentioned"));
+  assert.ok(currentConversation.body.nextQuestions.length>0);
+  assert.match(currentConversation.body.transcriptSha256,/^[a-f0-9]{64}$/);
+  const invalidCode=await request(conversationRoot,{method:"POST",body:JSON.stringify({
+   expectedRevision:conversationRevision+1,kind:"CLARIFICATION",
+   text:"The specification checks are missing evidence.",requirementCode:"UNKNOWN-REQ"
+  })});
+  assert.equal(invalidCode.response.status,400);
+  const staleTurn=await request(conversationRoot,{method:"POST",body:JSON.stringify({
+   expectedRevision:conversationRevision,kind:"PROCEDURE",
+   text:"We reviewed another instrument certificate.",requirementCode:null
+  })});
+  assert.equal(staleTurn.response.status,409);
+  const firstUnmentioned=currentConversation.body.coverage.find(c=>c.coverage==="unmentioned");
+  assert.ok(firstUnmentioned,"Expected an uncovered supplier audit requirement");
+  const clarification="We have not performed the detailed check for this requirement yet. Evidence documents are pending from the supplier and a follow-up review will be required.";
+  const nextTurn=await request(conversationRoot,{method:"POST",body:JSON.stringify({
+   expectedRevision:conversationRevision+1,kind:"CLARIFICATION",text:clarification,
+   requirementCode:firstUnmentioned.code
+  })});
+  assert.equal(nextTurn.response.status,201,JSON.stringify(nextTurn.body));
+  const updatedConversation=await request(conversationRoot);
+  assert.equal(updatedConversation.body.turns.length,2);
+  assert.equal(updatedConversation.body.turns[1].kind,"CLARIFICATION");
+  assert.equal(updatedConversation.body.turns[1].requirementCode,firstUnmentioned.code);
+  assert.equal(updatedConversation.body.transcript,procedureTurn+"\\n"+clarification);
+  assert.ok(updatedConversation.body.coverage.find(c=>c.code===firstUnmentioned.code).sourceTurnIds.includes(updatedConversation.body.turns[1].id));
+  assert.ok(updatedConversation.body.nextQuestions.some(q=>q.code===firstUnmentioned.code));
+  const conversationAnalysis=await request(procedureRoot+"/analyze",{method:"POST",body:JSON.stringify({
+   procedure:updatedConversation.body.transcript,allowExternal:false
+  })});
+  assert.equal(conversationAnalysis.response.status,200);
+  assert.equal(conversationAnalysis.body.mode,"local");
+  assert.equal(conversationAnalysis.body.auditRevision,updatedConversation.body.audit.revision);
+  assert.ok(conversationAnalysis.body.matches.every(m=>updatedConversation.body.transcript.includes(m.excerpt)));
+  const directSql=new IntegrityPrismaClient();
+  try{
+   await assert.rejects(directSql.procedureDialogueTurn.update({
+    where:{id:updatedConversation.body.turns[0].id},data:{text:"silently changed"}
+   }),/history is append-only|constraint|P2004/i);
+   await assert.rejects(directSql.procedureDialogueTurn.delete({
+    where:{id:updatedConversation.body.turns[0].id}
+   }),/history is append-only|constraint|P2004/i);
+  }finally{await directSql.$disconnect()}
+  const conversationEvents=await request("/api/audits/"+encodeURIComponent(guidedId)+"/events");
+  assert.equal(conversationEvents.body.events.filter(e=>e.action==="PROCEDURE_DIALOGUE_TURN_ADDED").length,2);
+  const badConversationInput=await request(conversationRoot,{method:"POST",body:JSON.stringify({
+   expectedRevision:updatedConversation.body.audit.revision,kind:"CLARIFICATION",text:"short",requirementCode:null
+  })});
+  assert.equal(badConversationInput.response.status,400);
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
   assert.equal(logout.response.status,200);
   sessionCookie="";
@@ -956,6 +1027,8 @@ try {
   assert.equal((await request("/api/methodologies")).response.status,401);
   assert.equal((await request(guidedRoot)).response.status,401);
   assert.equal((await request(procedureRoot+"/analyze",{method:"POST",body:"{}"})).response.status,401);
+  assert.equal((await request(conversationRoot)).response.status,401);
+  assert.equal((await request(conversationRoot,{method:"POST",body:"{}"})).response.status,401);
   assert.equal((await request(procedureRoot+"/apply",{method:"POST",body:"{}"})).response.status,401);
   assert.equal((await request(guidedRoot+"/step",{method:"POST",body:"{}"})).response.status,401);
   assert.equal((await request("/api/methodologies/apply",{method:"POST",body:"{}"})).response.status,401);
