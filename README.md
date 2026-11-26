@@ -355,6 +355,17 @@ SURFACE Audit now has a versioned, append-only `SecurityEvent` register recordin
 
 See **`LOCAL_DEPLOYMENT_RUNBOOK.md`** for Windows setup, SQL grants, runtime vs owner environment variables, verification and limitations. **Do not replace an existing local database connection without reviewing its migration ledger, grants and backup first.** This remains a local-development prototype without production networking, MFA, independent log retention, SIEM monitoring or regulatory signature assurance.
 
+## v2.0 — Portfolio management review and decision pack
+
+In explicitly enabled **local PostgreSQL** mode, the operations dashboard now links to the new **/management** review workspace. The review brings audit delivery, corrective-action overdue aging, high/critical findings and client risk triage together with a client selector. It displays six monthly audit-start cohorts (creation dates, **not** asserted completion dates) and the top outstanding actions. An operator can print/save the management review as a PDF using the browser and download either a structured JSON snapshot or an Excel-compatible CSV of the client risk register.
+
+**Authenticated data endpoints:** `GET /api/operations/management[?client=<exact-client-name>]` and `GET /api/operations/management/export?format=json|csv[&client=<exact-client-name>]`. Both enforce local operator sessions, deny invalid filters, refuse unsupported formats and return no-store headers. CSV values are escaped and potential spreadsheet formulas are neutralized.
+
+**Interpretation warning:** The existing portfolio loader takes only the latest **500 audits, findings, actions and evidence references, independently**. The review explicitly labels these as *sampled records*. When a category reaches 500, a truncation warning appears. Scores and counts **must not be described as all-time totals**. The risk score is a transparent **triage heuristic**: `3 × overdue open actions + 2 × open HIGH/CRITICAL findings + undated open actions + unowned open actions`. It is **not** a compliance rating, instrument measurement, severity prediction, customer risk assessment or statutory certification. Overdue means due date before today's UTC date; actions already verified are excluded. The six-month series uses audit *creation dates*, not evidence of closure or performance improvement. Results are live and change as the database changes; management exports are **not signed or sealed**. The underlying separate audit dossier signing remains available for actual closed-audit document custody.
+
+**Access / scope:** This management review is available to signed-in local operator accounts; it reveals client-wide portfolio names, so do not expose the application on a network or enter confidential records. It does not implement multi-tenant separation, external regulatory review, production analytics or an accredited decision process. Existing backup and security release gates continue to run in CI.
+
+
 
 ### Security incident review (v2.1 development)
 

@@ -1,6 +1,6 @@
 # SURFACE Audit — Project Handoff for a New Chat
 
-**Status date:** 25 November 2026 (Europe/Stockholm) — v1.9 development branch snapshot.  
+**Status date:** 25 November 2026 (Europe/Stockholm) — v2.0 development branch snapshot.  
 **Canonical repository:** https://github.com/Vijethvr/Surface-Audit  
 **Default branch:** `main`  
 **Purpose:** Long-term continuity between ChatGPT conversations. **Always check live GitHub status and code before acting; this handoff is a dated snapshot, not live state.**
@@ -48,7 +48,7 @@ The demo-browser storage mode exists separately. Database mode is a local-develo
 | v1.3 | Account lockout, content-bound review, versioned migration baseline | #15 |
 | v1.4 | Audit optimistic revisions, concurrent-write coordination, migration inspector | #16 |
 | v1.5 | Local backup and restore drill, append-only database history triggers | #17 |
-| **v1.6** | **Encrypted local recovery package + safe local configuration preflight + continuity document** | **#18, verified present on main at start of v1.7** |\n| **v1.7** | **Offline independently verifiable Ed25519 signed sealed audit dossiers** | **#19, verified present on main at start of v1.8** |\n| **v1.8** | **Public-key trust registry, local security attack tests and deployment threat model** | **#20 verified on main at start of v1.9** |\n| **v1.9** | **Restricted app database role, security event ledger and administrator console** | **New development PR; verify status and CI before merge** |
+| **v1.6** | **Encrypted local recovery package + safe local configuration preflight + continuity document** | **#18, verified present on main at start of v1.7** |\n| **v1.7** | **Offline independently verifiable Ed25519 signed sealed audit dossiers** | **#19, verified present on main at start of v1.8** |\n| **v1.8** | **Public-key trust registry, local security attack tests and deployment threat model** | **#20 verified on main at start of v1.9** |\n| **v1.9** | **Restricted app database role, security event ledger and administrator console** | **#21 verified in main at start of v2.0** |\n| **v2.0** | **Portfolio management review, client risk triage, overdue aging, printable decision pack, JSON/CSV exports** | **In development; verify PR and final CI before merge** |
 
 As of the start of v1.6, the v1.5 migration file and recovery tool were confirmed on `main`. Verify v1.6 and any later merges afresh.
 
@@ -89,6 +89,14 @@ Important remaining limits: ordinary app DML remains broad (no client row-level 
 
 **Before calling v1.9 complete:** Verify its PR, final-commit GitHub Actions results, and ensure migration/CI least-privilege assertions, security events and complete backup/restore tests all pass. The user alone merges.
 
+## 5D. v2.0 cross-audit management review (new milestone)
+
+Branch `feat/management-review-v2` based on `main`; verify current PR and CI. This release connects the existing database-backed operations center to a new `/management` view, calculations in `src/lib/management-review.ts`, protected `/api/operations/management` endpoints and printable/JSON/CSV management decision packs. Client-level scorecards, action overdue buckets, risk heuristic and six-month audit-start cohorts are supported.
+
+**Critical scope boundary:** The portfolio source returns a maximum of 500 most recent records **per category**. These are *sample analytics*, not global accounting totals. Risk ranking is a heuristic, not independent assurance. The management pack is live, unsigned and unsealed; keep completed-audit immutable snapshot and offline signing separate.
+
+Tests extend `scripts/smoke-db.mjs` with endpoint authorization, filters, metrics, CSV/JSON and no-store checks. Before calling v2.0 complete, verify both GitHub Actions jobs pass for the final commit. The user alone reviews and merges the PR.
+
 ## 6. Windows developer environment
 
 Historically used local directory:
@@ -126,7 +134,7 @@ Check the latest PR, `main` and workflow runs before saying a milestone is compl
 
 ## 9. Prioritized substantial next steps
 
-1. **v1.9 acceptance:** validate restricted PostgreSQL role, credential-safe event register and full CI/security/recovery tests; leave merge approval to the user.
+1. **v2.0 acceptance:** verify cross-audit management review, scoped exports and full CI/security/recovery tests. Leave merge approval to the user.
 2. **Security assessment:** automated local attack-boundary tests, database access restrictions, authentication response timing/concurrency, session protections and dependency patch management.
 3. **Backup operations:** secure passphrase management, offsite encrypted archival with restore drill, retention and cleanup policy, recovery objectives and a deployment runbook.
 4. **Independent evidentiary integrity:** v1.7 provides signatures and v1.8 provides an editable local key trust/revocation registry; independently protected registry, certified signing authority, trusted timestamps and key-custody operations remain unimplemented.
@@ -139,6 +147,6 @@ These are recommendations, not implemented capabilities.
 
 ## v2.1 pending — security incident review (26 Nov 2026)
 
-Independent branch `feat/security-incident-review-v2.1` starts from **main at v1.9**, while v2.0 management review PR #22 remains unmerged. This is intentionally not a stacked PR. New administrator-only `GET /api/security/incidents` supports fixed 24-hour, 7-day and 30-day windows, optional allowlisted event type, bounded 1–500 entries, outcome summaries, failed-login/lockout totals, and Excel-safe CSV download. Operator console provides window controls and a clear truncated-results warning; integration tests cover auth, parameters, CSV and cache policy.
+Independent branch `feat/security-incident-review-v2.1` starts from **main at v1.9**, after v2.0 management review PR #22 merged into main. This is intentionally not a stacked PR. New administrator-only `GET /api/security/incidents` supports fixed 24-hour, 7-day and 30-day windows, optional allowlisted event type, bounded 1–500 entries, outcome summaries, failed-login/lockout totals, and Excel-safe CSV download. Operator console provides window controls and a clear truncated-results warning; integration tests cover auth, parameters, CSV and cache policy.
 
-**Limits:** This is local development only. Counts are event occurrences (not identified attacks), no alerting, automated containment, external archival, independently immutable logs or production approval. CSV is at most 500 newest rows; totals/summary cover the selected time window. Database owner can rewrite history. Test final CI before requesting merge. PR #22 must be managed separately, and user alone merges both.
+**Limits:** This is local development only. Counts are event occurrences (not identified attacks), no alerting, automated containment, external archival, independently immutable logs or production approval. CSV is at most 500 newest rows; totals/summary cover the selected time window. Database owner can rewrite history. Test final CI before requesting merge. PR #22 is merged; PR #23 requires the repository owner's review and merge.
