@@ -204,3 +204,12 @@ PR #29 verified merged in main before branching (merge `41b39f477e4d0e18c6d824a5
 - HTTP CI regression: draft export rejection, ready package retrieval, verify/tamper checks, CSV correctness and unauthorized denial. Preserve existing full Postgres restore/signature/security tests and update docs.
 
 Limits: source counts exact, exported detail capped to 100 audits/500 CAPA/500 evidence entries and export refuses truncated scope. SHA-256 portable envelope not independently signed; original evidence file bytes not included; signed audit dossiers remain separate. Internal only, not production/real client use. Owner alone merges after **both final-head GitHub Actions jobs succeed**.
+
+
+## v3.4 Methodology Workbench — repeatable service delivery (26 November 2026)
+
+PR #30 confirmed merged into `main` before beginning, merge `95f7cb56d38815d4fbdbf4a6eb81cd4bc18fc66e`. Feature branch `feat/methodology-workbench-v3.4` adds a major new end-user workflow `/methodologies`, three built-in consulting blueprints (measurement assurance, supplier metrology and calibration/traceability readiness), validated custom method publishing and a one-click atomic project/application pipeline. A method blueprint includes objective, in/out scope, audit modules with specific requirements, day-offset milestones and audit-linked deliverables. `POST /api/methodologies/apply` creates Project, initial EngagementLifecycle, its append-only lifecycle event, each Audit with frozen templateSnapshot and AUDIT_CREATED event, all within one Prisma transaction. `Project.methodologySnapshot` retains original source/revision/blueprint; `ConsultingMethodology` stores local custom catalog definitions. Migration `20261126112000_methodology_workbench` is additive.
+
+Updated sidebar, Engagement Studio, Clients & Projects and responsive CSS. Full CI HTTP smoke adds list, malformed linked audit key, custom publishing and duplicate refusal, atomic application, expected dates, checklist snapshot lineage and anonymous denial. Keep both Next.js and PostgreSQL/backup/signature CI gates green at final branch SHA; user alone merges.
+
+This remains a local-only prototype; methodology baselines are not guaranteed applicable to any specific client/regulatory framework and the JSON custom editor is intended for internal operators. No production/customer authorization or real client data permitted.

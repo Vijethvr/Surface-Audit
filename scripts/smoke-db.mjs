@@ -758,6 +758,73 @@ try {
       /history is append-only|constraint|P2004/i);
   }finally{await integrityDb.$disconnect()}
 
+  // v3.4: methodology catalog, blueprint validation and atomic generation.
+  const catalog=await request("/api/methodologies");
+  assert.equal(catalog.response.status,200,JSON.stringify(catalog.body));
+  assert.ok(catalog.body.methodologies.length>=3);
+  const standard=catalog.body.methodologies.find(x=>x.id==="standard:supplier-metrology");
+  assert.ok(standard);
+  assert.equal(standard.blueprint.audits.length,2);
+  const malformedBlueprint=await request("/api/methodologies",{method:"POST",body:JSON.stringify({
+   title:"Bad linked blueprint "+unique,description:"Invalid",revision:"1.0",
+   blueprint:{...standard.blueprint,deliverables:[{...standard.blueprint.deliverables[0],auditKey:"missing-key"}]}
+  })});
+  assert.equal(malformedBlueprint.response.status,400);
+  const customMethod=await request("/api/methodologies",{method:"POST",body:JSON.stringify({
+   title:"CI tailored supplier methodology "+unique,description:"Customized supplier assessment",revision:"2.3",blueprint:standard.blueprint
+  })});
+  assert.equal(customMethod.response.status,201,JSON.stringify(customMethod.body));
+  const customId=customMethod.body.methodology.id;
+  const duplicateMethod=await request("/api/methodologies",{method:"POST",body:JSON.stringify({
+   title:"CI tailored supplier methodology "+unique,description:"Duplicate",revision:"2.3",blueprint:standard.blueprint
+  })});
+  assert.equal(duplicateMethod.response.status,409);
+  const startDate="2027-03-01",newProjectName="Generated supplier engagement "+unique;
+  const applied=await request("/api/methodologies/apply",{method:"POST",body:JSON.stringify({
+   clientId,methodologyId:customId,projectName:newProjectName,reference:"GEN-1",
+   startDate,owner:"CI supplier consultant"
+  })});
+  assert.equal(applied.response.status,201,JSON.stringify(applied.body));
+  assert.equal(applied.body.auditIds.length,2);
+  assert.equal(applied.body.milestoneCount,3);
+  assert.equal(applied.body.deliverableCount,3);
+  const generatedId=applied.body.projectId;
+  const generatedLifecycle=await request("/api/projects/"+generatedId+"/lifecycle");
+  assert.equal(generatedLifecycle.response.status,200);
+  assert.equal(generatedLifecycle.body.plan.revision,1);
+  assert.equal(generatedLifecycle.body.plan.stage,"SCOPED");
+  assert.equal(generatedLifecycle.body.plan.milestones.length,3);
+  assert.equal(generatedLifecycle.body.plan.milestones[0].dueDate,"2027-03-11");
+  assert.ok(generatedLifecycle.body.plan.deliverables.some(d=>applied.body.auditIds.includes(d.auditId)));
+  assert.equal(generatedLifecycle.body.history[0].action,"METHODOLOGY_APPLIED");
+  const generatedDb=new IntegrityPrismaClient();
+  try{
+   const savedProject=await generatedDb.project.findUnique({where:{id:generatedId}});
+   assert.equal(savedProject.clientId,clientId);
+   assert.equal(savedProject.methodologySnapshot.title,"CI tailored supplier methodology "+unique);
+   assert.equal(savedProject.methodologySnapshot.revision,"2.3");
+   assert.equal(savedProject.methodologySnapshot.blueprint.audits.length,2);
+   const snapshotAudits=await generatedDb.audit.findMany({where:{projectId:generatedId},include:{events:true}});
+   assert.equal(snapshotAudits.length,2);
+   assert.ok(snapshotAudits.every(a=>a.clientId===clientId&&a.templateSnapshot.methodologyId===customId));
+   assert.ok(snapshotAudits.every(a=>a.events.some(ev=>ev.action==="AUDIT_CREATED"&&ev.details.source==="methodology")));
+   assert.equal(snapshotAudits.find(a=>a.title==="Supplier measurement control audit").targetDate.toISOString().slice(0,10),"2027-03-31");
+  }finally{await generatedDb.$disconnect()}
+  const duplicateApplication=await request("/api/methodologies/apply",{method:"POST",body:JSON.stringify({
+   clientId,methodologyId:customId,projectName:newProjectName,startDate
+  })});
+  assert.equal(duplicateApplication.response.status,409);
+  const invalidApplication=await request("/api/methodologies/apply",{method:"POST",body:JSON.stringify({
+   clientId,methodologyId:"standard:measurement-assurance",projectName:"Bad date "+unique,startDate:"2027-02-30"
+  })});
+  assert.equal(invalidApplication.response.status,400);
+  const unknownMethodology=await request("/api/methodologies/apply",{method:"POST",body:JSON.stringify({
+   clientId,methodologyId:"not-a-real-method",projectName:"Unknown method "+unique,startDate
+  })});
+  assert.equal(unknownMethodology.response.status,404);
+  const standaloneCatalog=await request("/api/methodologies");
+  assert.ok(standaloneCatalog.body.methodologies.some(x=>x.id===customId));
+  assert.equal(standaloneCatalog.body.methodologies.find(x=>x.id===customId).revision,"2.3");
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
   assert.equal(logout.response.status,200);
   sessionCookie="";
@@ -766,6 +833,8 @@ try {
   assert.equal((await request("/api/equipment")).response.status,401);
   assert.equal((await request("/api/templates")).response.status,401);
   assert.equal((await request("/api/projects")).response.status,401);
+  assert.equal((await request("/api/methodologies")).response.status,401);
+  assert.equal((await request("/api/methodologies/apply",{method:"POST",body:"{}"})).response.status,401);
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings")).response.status,401);
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/evidence")).response.status,401);
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/report")).response.status,401);

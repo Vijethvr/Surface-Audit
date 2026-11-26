@@ -86,6 +86,7 @@ model Project {
   updatedAt DateTime @updatedAt
   audits    Audit[]
   lifecycle EngagementLifecycle?
+  methodologySnapshot Json?
 
   @@unique([clientId, name])
   @@index([clientId])
@@ -306,4 +307,17 @@ model EngagementLifecycleEvent {
   summary String
   createdAt DateTime @default(now())
   @@index([lifecycleId,createdAt])
+}
+
+// Reusable, local-only consulting service blueprint. Applied projects keep an
+// immutable JSON snapshot so later catalog changes cannot alter delivered work.
+model ConsultingMethodology {
+ id String @id @default(cuid())
+ title String @unique
+ description String @default("")
+ revision String @default("1.0")
+ blueprint Json
+ createdBy String
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
 }
