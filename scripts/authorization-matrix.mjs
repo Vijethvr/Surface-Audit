@@ -9,7 +9,7 @@ export async function exerciseAuthorizationMatrix({request,signInAs,setCookie,ad
   "/api/clients","/api/projects","/api/equipment","/api/templates",
   "/api/audits",`/api/audits/${id}`,`/api/audits/${id}/events`,
   `/api/audits/${id}/findings`,`/api/audits/${id}/evidence`,
-  `/api/audits/${id}/equipment`,`/api/audits/${id}/assets`,
+`/api/audits/${id}/assets`,
   `/api/audits/${id}/report`,`/api/audits/${id}/review`,
   "/api/operations","/api/operations/management"
  ];
