@@ -197,6 +197,16 @@ try {
   // v3.2 end-to-end consulting project lifecycle: scope, milestones,
   // audit-linked deliverables, optimistic versioning, internal acceptance.
   const lifecyclePath="/api/projects/"+encodeURIComponent(project.body.project.id)+"/lifecycle";
+  const packPath="/api/projects/"+encodeURIComponent(project.body.project.id)+"/pack";
+  const initialPack=await request(packPath);
+  assert.equal(initialPack.response.status,200);
+  assert.equal(initialPack.body.exportReady,false);
+  assert.ok(initialPack.body.content.readiness.blockers.some(x=>x.includes("No versioned")));
+  assert.equal((await request(packPath+"?format=package")).response.status,409);
+  assert.equal((await request(packPath+"?format=csv")).response.status,409);
+  assert.equal((await request(packPath+"?format=xml")).response.status,400);
+  assert.equal((await request(packPath+"?format=csv&format=package")).response.status,400);
+
   const lifecycleEmpty=await request(lifecyclePath);
   assert.equal(lifecycleEmpty.response.status,200,JSON.stringify(lifecycleEmpty.body));
   assert.equal(lifecycleEmpty.body.plan.revision,0);
@@ -602,6 +612,36 @@ try {
    summary:"All planned deliverables reviewed internally and lifecycle closed"})});
   assert.equal(lifecycleClosed.response.status,200,JSON.stringify(lifecycleClosed.body));
   assert.equal(lifecycleClosed.body.revision,2);
+
+  const previewPack=await request(packPath);
+  assert.equal(previewPack.response.status,200,JSON.stringify(previewPack.body));
+  assert.equal(previewPack.response.headers.get("cache-control"),"private, no-store");
+  assert.equal(previewPack.body.exportReady,true,JSON.stringify(previewPack.body.content.readiness.blockers));
+  assert.equal(previewPack.body.content.project.id,project.body.project.id);
+  assert.equal(previewPack.body.content.lifecycle.revision,2);
+  assert.equal(previewPack.body.content.lifecycle.deliverables[0].status,"ACCEPTED");
+  assert.ok(previewPack.body.content.audits.some(a=>a.id===engagementId&&a.reportIntegrity==="VERIFIED"));
+  assert.ok(previewPack.body.content.actions.some(a=>a.id===actionId));
+  assert.ok(previewPack.body.content.evidence.some(a=>a.id===uploaded.body.asset.id));
+  const packageResponse=await fetch(base+packPath+"?format=package",{headers:{Cookie:sessionCookie}});
+  assert.equal(packageResponse.status,200);
+  assert.match(packageResponse.headers.get("content-disposition")??"",/attachment/);
+  const portablePackage=await packageResponse.json();
+  assert.equal(portablePackage.format,"surface-audit-project-pack-v1");
+  const {verifyPackage}=await import("./verify-project-pack.mjs");
+  assert.equal(verifyPackage(portablePackage).valid,true);
+  const alteredPack=structuredClone(portablePackage);
+  alteredPack.content.lifecycle.scope="silently edited";
+  assert.equal(verifyPackage(alteredPack).valid,false);
+  const packageCsv=await fetch(base+packPath+"?format=csv",{headers:{Cookie:sessionCookie}});
+  assert.equal(packageCsv.status,200);
+  assert.ok((packageCsv.headers.get("content-type")??"").includes("text/csv"));
+  const csvBytes=Buffer.from(await packageCsv.arrayBuffer());
+  assert.deepEqual([...csvBytes.subarray(0,3)],[0xef,0xbb,0xbf]);
+  assert.ok(csvBytes.toString("utf8").includes("MILESTONE"));
+  assert.ok(csvBytes.toString("utf8").includes("DELIVERABLE"));
+  assert.ok(csvBytes.toString("utf8").includes("CAPA"));
+  assert.ok(csvBytes.toString("utf8").includes("EVIDENCE"));
   const lifecycleHistory=await request(lifecyclePath);
   assert.equal(lifecycleHistory.body.plan.stage,"CLOSED");
   assert.equal(lifecycleHistory.body.history[0].action,"PLAN_CLOSED");
@@ -742,6 +782,8 @@ try {
   assert.equal((await request("/api/delivery")).response.status,401);
   assert.equal((await request("/api/engagements")).response.status,401);
   assert.equal((await request(lifecyclePath)).response.status,401);
+  assert.equal((await request(packPath)).response.status,401);
+  assert.equal((await request(packPath+"?format=package")).response.status,401);
   assert.equal((await request(lifecyclePath,{method:"PATCH",body:"{}"})).response.status,401);
   assert.equal((await request("/api/delivery/schedule",{method:"PATCH",body:"{}"})).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
