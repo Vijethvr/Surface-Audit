@@ -1,6 +1,6 @@
 import {createHash,randomBytes,scryptSync,timingSafeEqual} from "node:crypto";
 import {prisma} from "@/lib/db";
-import type {OperatorRole} from "@prisma/client";
+import type {OperatorRole,Prisma} from "@prisma/client";
 export const cookieName="surface_audit_session";
 export const sessionMaxAge=8*60*60;
 export type OperatorIdentity={id:string;username:string;role:OperatorRole};
@@ -35,9 +35,9 @@ export async function getSession(request:Request):Promise<OperatorIdentity|null>
  if(!row||row.expiresAt<=new Date()||!row.operator.active)return null;
  return {id:row.operator.id,username:row.operator.username,role:row.operator.role};
 }
-export async function createSession(operatorId:string){
+export async function createSession(operatorId:string,db:Prisma.TransactionClient=prisma){
  const token=randomBytes(32).toString("hex");
- await prisma.operatorSession.create({data:{tokenHash:hashToken(token),operatorId,expiresAt:new Date(Date.now()+sessionMaxAge*1000)}});
+ await db.operatorSession.create({data:{tokenHash:hashToken(token),operatorId,expiresAt:new Date(Date.now()+sessionMaxAge*1000)}});
  return token;
 }
 export async function destroySession(request:Request){
