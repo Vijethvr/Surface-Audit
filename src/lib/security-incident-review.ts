@@ -23,7 +23,7 @@ export async function loadIncidentReview(query:ReturnType<typeof parseIncidentQu
    id:true,createdAt:true,eventType:true,outcome:true,actorUsername:true,subjectUsername:true
   },orderBy:[{createdAt:"desc"},{id:"desc"}],take:query.limit})
  ]);
- const summary=grouped.map(row=>({type:row.eventType,outcome:row.outcome,count:row._count.eventType}))
+ const summary=grouped.map(row=>({type:row.eventType,outcome:row.outcome,count:typeof row._count==="object"?(row._count.eventType??0):0}))
   .sort((a,b)=>b.count-a.count||a.type.localeCompare(b.type));
  const suspicious=summary.filter(row=>["LOGIN_FAILED","LOGIN_LOCKED"].includes(row.type))
   .reduce((sum,row)=>sum+row.count,0);
