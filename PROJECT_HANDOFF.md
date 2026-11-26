@@ -144,3 +144,9 @@ These are recommendations, not implemented capabilities.
 
 ---
 **Maintaining this file:** At each future milestone update the date, main/PR status, architecture changes, CI link and risks; then update the downloadable handoff companion. The **live repository and CI results outrank this document**.
+
+## v2.1 pending — security incident review (26 Nov 2026)
+
+Independent branch `feat/security-incident-review-v2.1` starts from **main at v1.9**, after v2.0 management review PR #22 merged into main. This is intentionally not a stacked PR. New administrator-only `GET /api/security/incidents` supports fixed 24-hour, 7-day and 30-day windows, optional allowlisted event type, bounded 1–500 entries, outcome summaries, failed-login/lockout totals, and Excel-safe CSV download. Operator console provides window controls and a clear truncated-results warning; integration tests cover auth, parameters, CSV and cache policy.
+
+**Limits:** This is local development only. Counts are event occurrences (not identified attacks), no alerting, automated containment, external archival, independently immutable logs or production approval. CSV is at most 500 newest rows; totals/summary cover the selected time window. Database owner can rewrite history. Test final CI before requesting merge. PR #22 is merged; PR #23 requires the repository owner's review and merge.

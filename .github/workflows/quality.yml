@@ -37,6 +37,8 @@ jobs:
         run: npx prisma validate
       - name: Generate Prisma client
         run: npm run db:generate
+      - name: Check bounded security incident exports
+        run: node scripts/test-security-incident-csv.mjs
       - name: Typecheck
         run: npm run lint
       - name: Production build

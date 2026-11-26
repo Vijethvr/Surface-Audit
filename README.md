@@ -365,3 +365,10 @@ In explicitly enabled **local PostgreSQL** mode, the operations dashboard now li
 
 **Access / scope:** This management review is available to signed-in local operator accounts; it reveals client-wide portfolio names, so do not expose the application on a network or enter confidential records. It does not implement multi-tenant separation, external regulatory review, production analytics or an accredited decision process. Existing backup and security release gates continue to run in CI.
 
+
+
+### Security incident review (v2.1 development)
+
+Administrators may review recent local security activity on `/operators` using 24-hour, 7-day and 30-day windows. `GET /api/security/incidents?hours=168&limit=100` returns time-windowed event totals, grouped event/outcome counts, a combined failed-login/lockout **event** count, up to 500 latest rows, and a truncation flag. `GET /api/security/incidents?hours=168&limit=500&format=csv` downloads spreadsheet-safe CSV with a UTF-8 BOM; formula-like values are prefixed to reduce spreadsheet injection risk. The endpoint requires a local authenticated ADMIN, disables caching, validates filters and never includes tokens, passwords, network addresses, evidence bytes or request bodies.
+
+This is **not** an intrusion-detection service, tamper-evident external archive, SIEM, security certification, verified incident assessment, or production approval. Summaries are exact within the requested local window as recorded in PostgreSQL; CSV is capped at the newest 500 rows. The database owner can alter history despite runtime append-only constraints. Do not upload confidential customer evidence or expose this prototype publicly.
