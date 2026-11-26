@@ -457,10 +457,10 @@ try {
   assert.equal((await request("/api/security/incidents?format=xml")).response.status,400);
   const incidentCsvResponse=await fetch(base+"/api/security/incidents?hours=168&format=csv",{headers:{Cookie:sessionCookie}});
   assert.equal(incidentCsvResponse.status,200);
-  assert.match(incidentCsvResponse.headers.get("content-type")??"",/text\\/csv/);
+  assert.ok((incidentCsvResponse.headers.get("content-type")??"").includes("text/csv"));
   assert.match(incidentCsvResponse.headers.get("content-disposition")??"",/attachment/);
   const incidentCsvBody=await incidentCsvResponse.text();
-  assert.ok(incidentCsvBody.startsWith("\\uFEFF"));
+  assert.equal(incidentCsvBody.charCodeAt(0),0xFEFF);
   assert.ok(incidentCsvBody.includes("LOGIN_LOCKED"));
   sessionCookie=viewerCookie;
   assert.equal((await request("/api/security/incidents")).response.status,403);
