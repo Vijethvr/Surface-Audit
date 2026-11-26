@@ -459,8 +459,9 @@ try {
   assert.equal(incidentCsvResponse.status,200);
   assert.ok((incidentCsvResponse.headers.get("content-type")??"").includes("text/csv"));
   assert.match(incidentCsvResponse.headers.get("content-disposition")??"",/attachment/);
-  const incidentCsvBody=await incidentCsvResponse.text();
-  assert.equal(incidentCsvBody.charCodeAt(0),0xFEFF);
+  const incidentCsvBytes=Buffer.from(await incidentCsvResponse.arrayBuffer());
+  assert.deepEqual([...incidentCsvBytes.subarray(0,3)],[0xEF,0xBB,0xBF]);
+  const incidentCsvBody=incidentCsvBytes.toString("utf8");
   assert.ok(incidentCsvBody.includes("LOGIN_LOCKED"));
   sessionCookie=viewerCookie;
   assert.equal((await request("/api/security/incidents")).response.status,403);
