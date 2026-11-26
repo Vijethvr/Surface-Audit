@@ -440,6 +440,22 @@ try {
   assert.equal(unlock.response.status,200,JSON.stringify(unlock.body));
   const unblocked=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username:"ci-editor",password:"CI-password-only-not-for-real-users"})});
   assert.equal(unblocked.response.status,200);
+  // v2.4: concurrent wrong-password requests must not lose failure increments.
+  // The five-request threshold must hold even when all HTTP attempts overlap.
+  const simultaneousFailures=await Promise.all(Array.from({length:7},(_,n)=>
+   request("/api/auth/login",{method:"POST",body:JSON.stringify({username:"ci-editor",password:"parallel-wrong-"+n})})));
+  assert.ok(simultaneousFailures.every(result=>result.response.status===401));
+  const afterParallel=await request("/api/operators");
+  const parallelAccount=afterParallel.body.operators.find(row=>row.username==="ci-editor");
+  assert.equal(parallelAccount.failedLoginCount,5,"Concurrent attempts must atomically reach the exact lockout threshold");
+  assert.ok(parallelAccount.loginLockedUntil,"Concurrent attempts must activate lockout");
+  const parallelCorrect=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username:"ci-editor",password:"CI-password-only-not-for-real-users"})});
+  assert.equal(parallelCorrect.response.status,401,"Concurrent lockout must deny correct credentials");
+  const parallelReset=await request("/api/operators",{method:"PATCH",body:JSON.stringify({id:editorAccount.id,resetLockout:true})});
+  assert.equal(parallelReset.response.status,200);
+  const parallelRestored=await request("/api/auth/login",{method:"POST",body:JSON.stringify({username:"ci-editor",password:"CI-password-only-not-for-real-users"})});
+  assert.equal(parallelRestored.response.status,200,"Administrator reset must restore sign-in");
+  // Old cookie from earlier successful login is intentionally not used here.
   // Admin session stays in effect: a newly issued editor cookie does not replace it.
   sessionCookie=adminCookie;
   // Deactivation revokes an existing viewer session in the database.
