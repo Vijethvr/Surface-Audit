@@ -18,12 +18,12 @@ export async function loadIncidentReview(query:ReturnType<typeof parseIncidentQu
  const where={createdAt:{gte:from},...(query.type?{eventType:query.type}:{})};
  const [total,grouped,events]=await prisma.$transaction([
   prisma.securityEvent.count({where}),
-  prisma.securityEvent.groupBy({by:["eventType","outcome"],where,_count:{_all:true}}),
+  prisma.securityEvent.groupBy({by:["eventType","outcome"],where,orderBy:{eventType:"asc"},_count:{eventType:true}}),
   prisma.securityEvent.findMany({where,select:{
    id:true,createdAt:true,eventType:true,outcome:true,actorUsername:true,subjectUsername:true
   },orderBy:[{createdAt:"desc"},{id:"desc"}],take:query.limit})
  ]);
- const summary=grouped.map(row=>({type:row.eventType,outcome:row.outcome,count:row._count._all}))
+ const summary=grouped.map(row=>({type:row.eventType,outcome:row.outcome,count:row._count.eventType}))
   .sort((a,b)=>b.count-a.count||a.type.localeCompare(b.type));
  const suspicious=summary.filter(row=>["LOGIN_FAILED","LOGIN_LOCKED"].includes(row.type))
   .reduce((sum,row)=>sum+row.count,0);
