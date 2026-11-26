@@ -62,7 +62,7 @@ export default function ConsultingRegistry({kind}:{kind:RegistryKind}){
  <div className="panel">
  <div className="panelhead"><div><h2>{kind==="Clients & Projects"?"Client and project register":kind==="Equipment & Traceability"?"Instrument inventory":"Reusable templates"}</h2><p>{loading?"Loading records…":"Records stored in PostgreSQL development mode"}</p></div></div>
  {kind==="Clients & Projects"?<>
- <div className="registry-subheading"><Building2 size={17}/> Clients ({clients.length})</div>
+ <p className="registry-info"><a href="/engagements">Open Engagement Studio — client delivery overview and handoff packs</a></p><div className="registry-subheading"><Building2 size={17}/> Clients ({clients.length})</div>
  {clients.length===0?<p className="registry-empty">No clients have been created yet.</p>:<div className="registry-items">{clients.map(c=><article key={c.id}><b>{c.name}</b><small>{c._count.audits} audits · {c._count.projects} projects</small></article>)}</div>}
  <div className="registry-subheading"><FolderKanban size={17}/> Projects ({projects.length})</div>
  {projects.length===0?<p className="registry-empty">No projects have been created yet.</p>:<div className="registry-items">{projects.map(p=><article key={p.id}><b>{p.name}</b><small>{p.client.name}{p.reference?" · "+p.reference:""}</small></article>)}</div>}
