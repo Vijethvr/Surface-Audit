@@ -44,7 +44,7 @@ export async function loadClientEngagement(clientName:string,projectId?:string){
    finding:{select:{id:true,title:true,severity:true,auditId:true,audit:{select:{title:true}}}}}},
    orderBy:[{createdAt:"desc"},{id:"asc"}],take:maxRows}),
   prisma.evidenceAsset.findMany({where:assetWhere,select:{id:true,auditId:true,filename:true,requirementCode:true,mimeType:true,sizeBytes:true,sha256:true,createdAt:true,
-   audit:{select:{title:true}}},uploadedBy:true},orderBy:[{createdAt:"desc"},{id:"asc"}],take:maxRows}),
+   audit:{select:{title:true}},uploadedBy:true},orderBy:[{createdAt:"desc"},{id:"asc"}],take:maxRows}),
   prisma.audit.count({where:auditWhere}),prisma.finding.count({where:findingWhere}),
   prisma.correctiveAction.count({where:actionWhere}),prisma.evidenceAsset.count({where:assetWhere})
  ]);
