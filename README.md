@@ -372,3 +372,22 @@ In explicitly enabled **local PostgreSQL** mode, the operations dashboard now li
 Administrators may review recent local security activity on `/operators` using 24-hour, 7-day and 30-day windows. `GET /api/security/incidents?hours=168&limit=100` returns time-windowed event totals, grouped event/outcome counts, a combined failed-login/lockout **event** count, up to 500 latest rows, and a truncation flag. `GET /api/security/incidents?hours=168&limit=500&format=csv` downloads spreadsheet-safe CSV with a UTF-8 BOM; formula-like values are prefixed to reduce spreadsheet injection risk. The endpoint requires a local authenticated ADMIN, disables caching, validates filters and never includes tokens, passwords, network addresses, evidence bytes or request bodies.
 
 This is **not** an intrusion-detection service, tamper-evident external archive, SIEM, security certification, verified incident assessment, or production approval. Summaries are exact within the requested local window as recorded in PostgreSQL; CSV is capped at the newest 500 rows. The database owner can alter history despite runtime append-only constraints. Do not upload confidential customer evidence or expose this prototype publicly.
+
+## v2.2 — Encrypted recovery vault custody (development)
+
+Use `scripts/vault-custody.mjs` to keep **encrypted** backup vaults in a separate archive directory without extracting their contents. Prepare an existing directory on a separately controlled volume first; the application does **not** provision or authenticate remote storage.
+
+```powershell
+node scripts/local-recovery.mjs backup .\\backup-plain-2026-11-26
+node scripts/local-recovery.mjs verify .\\backup-plain-2026-11-26
+$env:SURFACE_AUDIT_BACKUP_PASSPHRASE = "<set a locally protected, unique long passphrase>"
+node scripts/secure-backup.mjs seal .\\backup-plain-2026-11-26 .\\backup-encrypted-2026-11-26
+node scripts/vault-custody.mjs store .\\backup-encrypted-2026-11-26 E:\\SurfaceAuditVaults archive-2026-11-26
+node scripts/vault-custody.mjs verify E:\\SurfaceAuditVaults archive-2026-11-26
+node scripts/vault-custody.mjs inventory E:\\SurfaceAuditVaults
+node scripts/vault-custody.mjs plan E:\\SurfaceAuditVaults 3
+```
+
+The archive root must **already exist**; labels are strict ASCII, never overwritten. `store` copies `surface-audit.vault` only, writes a local SHA-256 receipt, and verifies copied bytes; `verify` checks receipt plus ciphertext hash; `inventory` verifies all entries and `plan` proposes older entries for **manual review only**, never deletes, and requires a minimum of two retained archives. Run the decrypt-and-restore drill separately using the established `secure-backup.mjs unseal` and `local-recovery.mjs restore` commands against a **new empty local database**. Do not treat a matching hash or receipt stored alongside its vault as cryptographic provenance or evidence of a successful database restore.
+
+**Important limits:** No automatic retention/deletion, secure plaintext erasure, managed passphrase/escrow, independent custody, signed receipts, remotely authenticated replication, or offsite disaster recovery. A copied file may be encrypted yet undecryptable if the key is lost. The tool refuses production mode and symlink paths but does not defend against a malicious filesystem administrator, races, or a compromised destination. Only synthetic local test data. No real customer use or public deployment.
