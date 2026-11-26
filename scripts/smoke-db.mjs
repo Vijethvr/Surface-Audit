@@ -281,6 +281,37 @@ try {
   })});
   assert.equal(actionCreated.response.status,201,JSON.stringify(actionCreated.body));
   const actionId=actionCreated.body.action.id;
+  // v3.1: client engagement studio joins project, audit, CAPA and evidence;
+  // all cross-client filters remain exact (this is not tenant isolation).
+  const engagementDirectory=await request("/api/engagements");
+  assert.equal(engagementDirectory.response.status,200);
+  assert.ok(engagementDirectory.body.clients.some(c=>c.name==="Registry Client "+unique));
+  const clientName="Registry Client "+unique;
+  const clientScope="/api/engagements?client="+encodeURIComponent(clientName);
+  const studioBefore=await request(clientScope);
+  assert.equal(studioBefore.response.status,200,JSON.stringify(studioBefore.body));
+  assert.equal(studioBefore.response.headers.get("cache-control"),"private, no-store");
+  assert.equal(studioBefore.body.client.name,clientName);
+  assert.ok(studioBefore.body.audits.some(a=>a.id===engagementId&&a.projectId===project.body.project.id));
+  assert.ok(studioBefore.body.projects.some(p=>p.id===project.body.project.id));
+  assert.equal(studioBefore.body.scope.totals.audits>=1,true);
+  assert.equal(studioBefore.body.metrics.activeAudits>=1,true);
+  assert.ok(studioBefore.body.deliverables.some(d=>d.auditId===engagementId&&!d.reportSealed&&d.dossierPath===null));
+  assert.equal((await request(clientScope+"&project="+project.body.project.id)).response.status,200);
+  assert.equal((await request(clientScope+"&project="+otherClient.body.client.id)).response.status,404);
+  assert.equal((await request("/api/engagements?client=nonexistent-client")).response.status,404);
+  assert.equal((await request("/api/engagements?format=csv")).response.status,400);
+  assert.equal((await request("/api/engagements?client=x&client=y")).response.status,400);
+  assert.equal((await request("/api/engagements?format=xml")).response.status,400);
+  const studioCsv=await fetch(base+clientScope+"&format=csv",{headers:{Cookie:sessionCookie}});
+  assert.equal(studioCsv.status,200);
+  assert.match(studioCsv.headers.get("content-type")??"",/text\\/csv/);
+  assert.match(studioCsv.headers.get("content-disposition")??"",/attachment/);
+  const studioCsvBytes=Buffer.from(await studioCsv.arrayBuffer());
+  assert.deepEqual([...studioCsvBytes.subarray(0,3)],[0xef,0xbb,0xbf]);
+  assert.ok(studioCsvBytes.toString("utf8").includes(clientName));
+  assert.doesNotMatch(studioCsvBytes.toString("utf8"),/CI-password-only-not-for-real-users/);
+
   // v3.0 delivery command center: cross-audit planning and editable deadlines.
   const deliveryInitial=await request("/api/delivery");
   assert.equal(deliveryInitial.response.status,200,JSON.stringify(deliveryInitial.body));
@@ -524,6 +555,9 @@ try {
   });
   assert.equal(completion.response.status,200,JSON.stringify(completion.body));
   assert.equal((await request("/api/audits")).body.audits.find(a=>a.id===engagementId).status,"Completed");
+  const studioAfterSeal=await request("/api/engagements?client="+encodeURIComponent(clientName));
+  assert.equal(studioAfterSeal.response.status,200);
+  assert.ok(studioAfterSeal.body.deliverables.some(d=>d.auditId===engagementId&&d.reportSealed&&d.dossierPath));
   const sealedReport=await request("/api/audits/"+encodeURIComponent(engagementId)+"/report");
   assert.equal(sealedReport.response.status,200);
   assert.equal(sealedReport.body.integrity.snapshot,true);
@@ -655,6 +689,7 @@ try {
   assert.equal((await request("/api/security/events")).response.status,401);
   assert.equal((await request("/api/security/incidents")).response.status,401);
   assert.equal((await request("/api/delivery")).response.status,401);
+  assert.equal((await request("/api/engagements")).response.status,401);
   assert.equal((await request("/api/delivery/schedule",{method:"PATCH",body:"{}"})).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
