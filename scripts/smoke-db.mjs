@@ -889,6 +889,62 @@ try {
   assert.ok(guidedFinal.body.reportReadiness.blockers.some(b=>b.includes("Finding")||b.includes("assessment is incomplete")));
   const guidedHistory=await request("/api/audits/"+encodeURIComponent(guidedId)+"/events");
   assert.equal(guidedHistory.body.events.filter(e=>e.action==="GUIDED_REQUIREMENT_ASSESSED").length,2);
+
+  // v3.6 Procedure Intelligence: unstructured technical narrative becomes
+  // exact quoted suggestions and questions; only reviewed entries are saved.
+  const procedureRoot="/api/audits/"+encodeURIComponent(guidedId)+"/procedure";
+  const narrative="We checked the supplier calibration inventory and calibration intervals against instrument register CERT-2027-901. The supplier traceability certificate was inspected and the calibration dates were current. Operator training and competence records were not available, so this item was not verified. The supplier measurement system did not include a completed uncertainty budget or a recorded decision rule.";
+  const firstAnalysis=await request(procedureRoot+"/analyze",{method:"POST",body:JSON.stringify({procedure:narrative,allowExternal:false})});
+  assert.equal(firstAnalysis.response.status,200,JSON.stringify(firstAnalysis.body));
+  assert.equal(firstAnalysis.body.mode,"local");
+  assert.equal(firstAnalysis.response.headers.get("cache-control"),"private, no-store");
+  assert.equal(firstAnalysis.body.auditRevision,guidedFinal.body.audit.revision);
+  assert.match(firstAnalysis.body.procedureSha256,/^[a-f0-9]{64}$/);
+  assert.ok(firstAnalysis.body.matches.length>=1);
+  assert.ok(firstAnalysis.body.matches.every(p=>narrative.includes(p.excerpt)));
+  assert.ok(firstAnalysis.body.matches.every(p=>p.assessment==="Not assessed"));
+  assert.ok(firstAnalysis.body.questions.length>0);
+  const matched=firstAnalysis.body.matches.find(p=>p.code!==firstRequirement&&p.code!==secondRequirement);
+  assert.ok(matched,"Expected at least one additional requirement from narrative");
+  const draftEntry={code:matched.code,excerpt:matched.excerpt,answer:"Not assessed",
+   comment:matched.observation,reference:matched.reference};
+  const wrongQuote=await request(procedureRoot+"/apply",{method:"POST",body:JSON.stringify({
+   expectedRevision:guidedFinal.body.audit.revision,procedure:narrative,procedureSha256:firstAnalysis.body.procedureSha256,
+   entries:[{...draftEntry,excerpt:"A quotation not present in the original narrative"}]
+  })});
+  assert.equal(wrongQuote.response.status,400);
+  const fakeConformity=await request(procedureRoot+"/apply",{method:"POST",body:JSON.stringify({
+   expectedRevision:guidedFinal.body.audit.revision,procedure:narrative,procedureSha256:firstAnalysis.body.procedureSha256,
+   entries:[{...draftEntry,answer:"Nonconformity"}]
+  })});
+  assert.equal(fakeConformity.response.status,400);
+  const forgedHash=await request(procedureRoot+"/apply",{method:"POST",body:JSON.stringify({
+   expectedRevision:guidedFinal.body.audit.revision,procedure:narrative,procedureSha256:"0".repeat(64),entries:[draftEntry]
+  })});
+  assert.equal(forgedHash.response.status,400);
+  const written=await request(procedureRoot+"/apply",{method:"POST",body:JSON.stringify({
+   expectedRevision:guidedFinal.body.audit.revision,procedure:narrative,procedureSha256:firstAnalysis.body.procedureSha256,
+   entries:[draftEntry]
+  })});
+  assert.equal(written.response.status,200,JSON.stringify(written.body));
+  assert.equal(written.body.count,1);
+  assert.equal(written.body.revision,guidedFinal.body.audit.revision+1);
+  const updatedGuided=await request(guidedRoot);
+  assert.equal(updatedGuided.response.status,200);
+  assert.equal(updatedGuided.body.items.find(i=>i.code===matched.code).comment,matched.observation);
+  assert.equal(updatedGuided.body.items.find(i=>i.code===firstRequirement).reference,"CERT-2027-101");
+  assert.equal(updatedGuided.body.items.find(i=>i.code===secondRequirement).answer,"Nonconformity");
+  const staleProcedure=await request(procedureRoot+"/apply",{method:"POST",body:JSON.stringify({
+   expectedRevision:guidedFinal.body.audit.revision,procedure:narrative,procedureSha256:firstAnalysis.body.procedureSha256,entries:[draftEntry]
+  })});
+  assert.equal(staleProcedure.response.status,409);
+  const repeatProcedure=await request(procedureRoot+"/apply",{method:"POST",body:JSON.stringify({
+   expectedRevision:written.body.revision,procedure:narrative,procedureSha256:firstAnalysis.body.procedureSha256,entries:[draftEntry]
+  })});
+  assert.equal(repeatProcedure.response.status,409);
+  const procedureEvents=await request("/api/audits/"+encodeURIComponent(guidedId)+"/events");
+  assert.ok(procedureEvents.body.events.some(e=>e.action==="PROCEDURE_MAPPING_APPLIED"));
+  assert.equal((await request(procedureRoot+"/analyze",{method:"POST",body:JSON.stringify({procedure:"too short"})})).response.status,400);
   const logout=await request("/api/auth/logout",{method:"POST",body:"{}"});
   assert.equal(logout.response.status,200);
   sessionCookie="";
@@ -899,6 +955,8 @@ try {
   assert.equal((await request("/api/projects")).response.status,401);
   assert.equal((await request("/api/methodologies")).response.status,401);
   assert.equal((await request(guidedRoot)).response.status,401);
+  assert.equal((await request(procedureRoot+"/analyze",{method:"POST",body:"{}"})).response.status,401);
+  assert.equal((await request(procedureRoot+"/apply",{method:"POST",body:"{}"})).response.status,401);
   assert.equal((await request(guidedRoot+"/step",{method:"POST",body:"{}"})).response.status,401);
   assert.equal((await request("/api/methodologies/apply",{method:"POST",body:"{}"})).response.status,401);
   assert.equal((await request("/api/audits/"+encodeURIComponent(engagementId)+"/findings")).response.status,401);
