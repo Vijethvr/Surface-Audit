@@ -87,6 +87,9 @@ export function normalizeAnalysis(candidate:unknown,procedure:string,requirement
   seen.add(p.code);return true;
  }).map(p=>({
   ...p,
+  // Only exact source passages may become proposed assessment observations.
+  observation:p.excerpt,
+  reference:p.reference&&procedure.includes(p.reference)?p.reference:"",
   // Model interpretation cannot be written as a final technical judgement.
   assessment:"Not assessed" as const
  }));
