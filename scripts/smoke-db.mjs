@@ -281,6 +281,34 @@ try {
   })});
   assert.equal(actionCreated.response.status,201,JSON.stringify(actionCreated.body));
   const actionId=actionCreated.body.action.id;
+  // v3.0 delivery command center: cross-audit planning and editable deadlines.
+  const deliveryInitial=await request("/api/delivery");
+  assert.equal(deliveryInitial.response.status,200,JSON.stringify(deliveryInitial.body));
+  assert.equal(deliveryInitial.response.headers.get("cache-control"),"private, no-store");
+  assert.ok(deliveryInitial.body.items.some(i=>i.id==="action:"+actionId&&i.date==="2027-01-30"));
+  assert.ok(deliveryInitial.body.items.some(i=>i.id==="audit:"+engagementId&&i.bucket==="UNSCHEDULED"));
+  assert.equal((await request("/api/delivery?range=IMPOSSIBLE")).response.status,400);
+  assert.equal((await request("/api/delivery?client=unknown-client")).response.status,400);
+  assert.equal((await request("/api/delivery?format=pdf")).response.status,400);
+  assert.equal((await request("/api/delivery?kind=ACTION&kind=AUDIT")).response.status,400);
+  const auditScheduled=await request("/api/delivery/schedule",{method:"PATCH",body:JSON.stringify({kind:"AUDIT",id:engagementId,date:"2027-02-05"})});
+  assert.equal(auditScheduled.response.status,200,JSON.stringify(auditScheduled.body));
+  const actionScheduled=await request("/api/delivery/schedule",{method:"PATCH",body:JSON.stringify({kind:"ACTION",id:actionId,date:"2027-02-01"})});
+  assert.equal(actionScheduled.response.status,200,JSON.stringify(actionScheduled.body));
+  const invalidSchedule=await request("/api/delivery/schedule",{method:"PATCH",body:JSON.stringify({kind:"AUDIT",id:engagementId,date:"2027-02-30"})});
+  assert.equal(invalidSchedule.response.status,400);
+  const deliveryUpdated=await request("/api/delivery?kind=ACTION");
+  assert.equal(deliveryUpdated.response.status,200);
+  assert.ok(deliveryUpdated.body.items.some(i=>i.id==="action:"+actionId&&i.date==="2027-02-01"));
+  const deliveryCalendar=await fetch(base+"/api/delivery?format=ics",{headers:{Cookie:sessionCookie}});
+  assert.equal(deliveryCalendar.status,200);
+  assert.match(deliveryCalendar.headers.get("content-type")??"",/text\/calendar/);
+  assert.match(deliveryCalendar.headers.get("content-disposition")??"",/attachment/);
+  const ics=await deliveryCalendar.text();
+  assert.ok(ics.includes("BEGIN:VCALENDAR")&&ics.includes("END:VCALENDAR"));
+  assert.ok(ics.includes("DTSTART;VALUE=DATE:20270201"));
+  assert.ok(ics.includes("DTSTART;VALUE=DATE:20270205"));
+  assert.ok(ics.includes("STATUS:TENTATIVE"));
   const actionPath=root+"/actions/"+encodeURIComponent(actionId);
   const incompleteVerification=await request(actionPath,{method:"PATCH",body:JSON.stringify({status:"VERIFIED"})});
   assert.equal(incompleteVerification.response.status,400);
@@ -626,6 +654,8 @@ try {
   assert.equal((await request("/api/operators")).response.status,401);
   assert.equal((await request("/api/security/events")).response.status,401);
   assert.equal((await request("/api/security/incidents")).response.status,401);
+  assert.equal((await request("/api/delivery")).response.status,401);
+  assert.equal((await request("/api/delivery/schedule",{method:"PATCH",body:"{}"})).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
   child.kill("SIGTERM");
