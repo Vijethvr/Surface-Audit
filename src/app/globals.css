@@ -79,3 +79,33 @@
  .management-page h2{font-size:13px}
  .management-entry{display:none!important}
 }
+
+/* v3.0 delivery command center */
+.delivery-page{max-width:1500px;margin:auto;padding:36px 34px 72px;color:#183447}
+.delivery-header{display:flex;justify-content:space-between;align-items:center;gap:25px;margin-bottom:24px}
+.delivery-header h1{font-size:clamp(28px,3vw,40px);letter-spacing:-1px;margin:8px 0}
+.delivery-header p{color:#6e8390;max-width:690px}
+.delivery-actions{display:flex;align-items:center;gap:15px;flex-wrap:wrap}
+.delivery-actions a{text-decoration:none;color:#087e88;font-size:13px;font-weight:700}
+.delivery-actions .primary{color:white}
+.delivery-toolbar{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:14px;margin:22px 0;background:white;border:1px solid #e0e8ee;border-radius:14px;padding:19px}
+.delivery-toolbar label{font-size:12px;font-weight:700;color:#536f7d;display:flex;flex-direction:column;gap:8px}
+.delivery-toolbar select,.delivery-toolbar input{width:100%;min-width:0;border:1px solid #d9e4ea;background:#f8fafb;border-radius:8px;padding:10px;color:#183447}
+.delivery-scorecard{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:12px;margin:22px 0}
+.delivery-scorecard .management-kpi{min-width:0}
+.delivery-panel{background:white;border:1px solid #e0e8ee;border-radius:14px;padding:23px;margin:20px 0}
+.delivery-panel h2{font-size:18px;margin:0 0 8px}
+.delivery-panel p{font-size:13px;color:#6e8390}
+.delivery-week-grid{display:grid;grid-template-columns:repeat(13,minmax(36px,1fr));gap:10px;align-items:end;margin-top:23px}
+.delivery-week{text-align:center;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;color:#647b8d}
+.delivery-week-bar{height:112px;width:100%;background:#ecf4f5;display:flex;align-items:end;border-radius:6px;overflow:hidden}
+.delivery-week-bar div{background:#087e88;width:100%;border-radius:5px 5px 0 0}
+.delivery-week small{font-size:9px}
+.delivery-list-heading{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.delivery-late{color:#b33e36;font-weight:750}
+.delivery-panel table strong{display:block;max-width:390px;white-space:normal}
+.delivery-panel table small{display:block;margin-top:5px;color:#728696}
+.delivery-panel table a{font-weight:750;color:#087e88}
+.sidebar .navitem[href]{text-decoration:none}
+@media(max-width:1050px){.delivery-scorecard{grid-template-columns:repeat(4,minmax(120px,1fr))}.delivery-toolbar{grid-template-columns:repeat(3,minmax(140px,1fr))}}
+@media(max-width:700px){.delivery-page{padding:23px 15px}.delivery-header{align-items:flex-start;flex-direction:column}.delivery-toolbar{grid-template-columns:repeat(2,minmax(120px,1fr))}.delivery-scorecard{grid-template-columns:repeat(2,minmax(120px,1fr))}.delivery-week-grid{overflow-x:auto;grid-template-columns:repeat(13,45px)}}
