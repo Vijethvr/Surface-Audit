@@ -45,7 +45,7 @@ export async function POST(request:Request,ctx:{params:Promise<{id:string}>}){
    const raw=(prior?.content??{}) as {answers?:Record<string,{answer?:string;comment?:string;reference?:string}>;summary?:string;reviewer?:string};
    const answers={...(raw.answers??{})};
    for(const entry of v.entries){
-    if(answers[entry.code]?.answer&&answers[entry.code].answer!=="Not assessed")
+    if(Object.prototype.hasOwnProperty.call(answers,entry.code))
      throw Error("EXISTING_ASSESSMENT");
     answers[entry.code]={answer:entry.answer,comment:entry.comment,reference:entry.reference};
    }
