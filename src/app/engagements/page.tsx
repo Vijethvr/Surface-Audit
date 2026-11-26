@@ -50,6 +50,7 @@ export default function EngagementStudio(){
    <label>Engagement / project<select aria-label="Engagement project" value={project} onChange={e=>{setProject(e.target.value);setSearch("")}}>
     <option value="">All projects</option>{detail?.projects.map(p=><option key={p.id} value={p.id}>{p.name}{p.reference?" · "+p.reference:""}</option>)}</select></label>
    {project&&<Link className="lc-project-entry" href={"/engagements/"+encodeURIComponent(project)+"/plan"}>Open project lifecycle planner</Link>}
+   {project&&<Link className="lc-project-entry" href={"/engagements/"+encodeURIComponent(project)+"/pack"}>Assemble project deliverables</Link>}
    <label>Find within engagement<input placeholder="Search audits, CAPA, evidence…" value={search} onChange={e=>setSearch(e.target.value)}/></label>
    <div className="eng-export-actions">
     {detail&&<><a href={"/api/engagements?"+path+"&format=csv"}>Download CSV register</a><a href={"/api/engagements?"+path} download="surface-engagement.json">Download JSON snapshot</a></>}
