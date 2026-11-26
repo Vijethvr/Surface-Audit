@@ -85,6 +85,7 @@ model Project {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   audits    Audit[]
+  lifecycle EngagementLifecycle?
 
   @@unique([clientId, name])
   @@index([clientId])
@@ -273,4 +274,36 @@ model SecurityEvent {
 
   @@index([createdAt])
   @@index([eventType, createdAt])
+}
+
+  
+// Local-development consulting delivery plan. Project is the engagement identity.
+// Scope, milestones and deliverables are versioned together; never treat the
+// internal acceptance field as a client's actual approval or signature.
+model EngagementLifecycle {
+  id String @id @default(cuid())
+  projectId String @unique
+  project Project @relation(fields: [projectId],references:[id],onDelete:Restrict)
+  revision Int @default(0)
+  objective String @default("")
+  scope String @default("")
+  exclusions String @default("")
+  commercialNote String @default("")
+  stage String @default("PROPOSED")
+  milestones Json @default("[]")
+  deliverables Json @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  events EngagementLifecycleEvent[]
+}
+model EngagementLifecycleEvent {
+  id String @id @default(cuid())
+  lifecycleId String
+  lifecycle EngagementLifecycle @relation(fields:[lifecycleId],references:[id],onDelete:Restrict)
+  revision Int
+  actor String
+  action String
+  summary String
+  createdAt DateTime @default(now())
+  @@index([lifecycleId,createdAt])
 }
