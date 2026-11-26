@@ -194,6 +194,43 @@ try {
   })});
   assert.equal(engagement.response.status,201,JSON.stringify(engagement.body));
   const engagementId=engagement.body.audit.id;
+  // v3.2 end-to-end consulting project lifecycle: scope, milestones,
+  // audit-linked deliverables, optimistic versioning, internal acceptance.
+  const lifecyclePath="/api/projects/"+encodeURIComponent(project.body.project.id)+"/lifecycle";
+  const lifecycleEmpty=await request(lifecyclePath);
+  assert.equal(lifecycleEmpty.response.status,200,JSON.stringify(lifecycleEmpty.body));
+  assert.equal(lifecycleEmpty.body.plan.revision,0);
+  assert.equal(lifecycleEmpty.body.project.client.name,"Registry Client "+unique);
+  const milestoneId=crypto.randomUUID(),deliverableId=crypto.randomUUID();
+  const lifecycleDraft={expectedRevision:0,stage:"DELIVERING",objective:"Review measurement assurance at the client site",
+   scope:"Review procedures, calibration references and evidence; deliver documented assessment",
+   exclusions:"No independent calibration or accreditation service",
+   commercialNote:"Test quote reference QA-123; no billing included",
+   milestones:[{id:milestoneId,title:"Perform technical assessment",owner:"Metrology team",dueDate:"2027-02-12",status:"IN_PROGRESS",note:""}],
+   deliverables:[{id:deliverableId,title:"Measurement assurance audit report",description:"Final assessment report and audit dossier",
+    auditId:engagementId,dueDate:"2027-02-15",status:"PREPARING",acceptanceNote:"",acceptedBy:""}],
+   summary:"Created scoped project delivery baseline"};
+  const savedLifecycle=await request(lifecyclePath,{method:"PATCH",body:JSON.stringify(lifecycleDraft)});
+  assert.equal(savedLifecycle.response.status,200,JSON.stringify(savedLifecycle.body));
+  assert.equal(savedLifecycle.body.revision,1);
+  const lifecycleAfterCreate=await request(lifecyclePath);
+  assert.equal(lifecycleAfterCreate.body.plan.milestones.length,1);
+  assert.equal(lifecycleAfterCreate.body.plan.deliverables[0].auditId,engagementId);
+  assert.ok(lifecycleAfterCreate.body.history.some(e=>e.action==="PLAN_CREATED"&&e.revision===1));
+  const staleLifecycle=await request(lifecyclePath,{method:"PATCH",body:JSON.stringify({...lifecycleDraft,summary:"Stale update attempt"})});
+  assert.equal(staleLifecycle.response.status,409);
+  const crossClientDeliverable=await request(lifecyclePath,{method:"PATCH",body:JSON.stringify({...lifecycleDraft,expectedRevision:1,
+   deliverables:[{...lifecycleDraft.deliverables[0],auditId:"clnonexistentprojectaudit12345"}],
+   summary:"Cannot reference another project audit"})});
+  assert.equal(crossClientDeliverable.response.status,409);
+  const earlyAcceptance=await request(lifecyclePath,{method:"PATCH",body:JSON.stringify({...lifecycleDraft,expectedRevision:1,
+   milestones:[{...lifecycleDraft.milestones[0],status:"DONE"}],
+   deliverables:[{...lifecycleDraft.deliverables[0],status:"ACCEPTED",acceptedBy:"Internal reviewer",acceptanceNote:"Report reviewed"}],
+   summary:"Cannot accept unsealed audit report"})});
+  assert.equal(earlyAcceptance.response.status,409);
+  const prematureClose=await request(lifecyclePath,{method:"PATCH",body:JSON.stringify({...lifecycleDraft,expectedRevision:1,stage:"CLOSED",summary:"Premature closure"})});
+  assert.equal(prematureClose.response.status,400);
+
   assert.equal(engagement.body.audit.project.id,project.body.project.id);
   assert.equal(engagement.body.audit.templateSnapshot.revision,"1.0");
   assert.equal(engagement.body.audit.templateSnapshot.criteria.length,1);
@@ -558,6 +595,20 @@ try {
   const studioAfterSeal=await request("/api/engagements?client="+encodeURIComponent(clientName));
   assert.equal(studioAfterSeal.response.status,200);
   assert.ok(studioAfterSeal.body.deliverables.some(d=>d.auditId===engagementId&&d.reportSealed&&d.dossierPath));
+
+  const lifecycleClosed=await request(lifecyclePath,{method:"PATCH",body:JSON.stringify({...lifecycleDraft,expectedRevision:1,stage:"CLOSED",
+   milestones:[{...lifecycleDraft.milestones[0],status:"DONE",note:"All technical checks completed"}],
+   deliverables:[{...lifecycleDraft.deliverables[0],status:"ACCEPTED",acceptedBy:"Internal reviewer",acceptanceNote:"Reviewed sealed local report"}],
+   summary:"All planned deliverables reviewed internally and lifecycle closed"})});
+  assert.equal(lifecycleClosed.response.status,200,JSON.stringify(lifecycleClosed.body));
+  assert.equal(lifecycleClosed.body.revision,2);
+  const lifecycleHistory=await request(lifecyclePath);
+  assert.equal(lifecycleHistory.body.plan.stage,"CLOSED");
+  assert.equal(lifecycleHistory.body.history[0].action,"PLAN_CLOSED");
+  assert.deepEqual(lifecycleHistory.body.history.map(e=>e.revision),[2,1]);
+  const afterClosure=await request(lifecyclePath,{method:"PATCH",body:JSON.stringify({...lifecycleDraft,expectedRevision:2,
+   summary:"Closed project must not change"})});
+  assert.equal(afterClosure.response.status,409);
   const sealedReport=await request("/api/audits/"+encodeURIComponent(engagementId)+"/report");
   assert.equal(sealedReport.response.status,200);
   assert.equal(sealedReport.body.integrity.snapshot,true);
@@ -690,6 +741,8 @@ try {
   assert.equal((await request("/api/security/incidents")).response.status,401);
   assert.equal((await request("/api/delivery")).response.status,401);
   assert.equal((await request("/api/engagements")).response.status,401);
+  assert.equal((await request(lifecyclePath)).response.status,401);
+  assert.equal((await request(lifecyclePath,{method:"PATCH",body:"{}"})).response.status,401);
   assert.equal((await request("/api/delivery/schedule",{method:"PATCH",body:"{}"})).response.status,401);
   console.log("PASS: authentication, origin validation, database persistence, audit history and logout.");
 } finally {
