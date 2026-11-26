@@ -298,3 +298,41 @@
 .workspace-back{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
 @media(max-width:1000px){.guided-layout{grid-template-columns:235px minmax(0,1fr)}.guided-score{grid-template-columns:repeat(3,minmax(130px,1fr))}}
 @media(max-width:710px){.guided-page{padding:20px 13px}.guided-header{flex-direction:column}.guided-layout{grid-template-columns:1fr}.guided-index{position:static;max-height:350px}.guided-score{grid-template-columns:repeat(2,minmax(110px,1fr))}.guided-readiness-grid{grid-template-columns:1fr}.guided-step-title{flex-direction:column}}
+
+/* v3.6 narrative-first procedure intelligence and review */
+.procedure-page{max-width:1540px;margin:0 auto;padding:33px 32px 75px;color:#183849}
+.procedure-header{display:flex;justify-content:space-between;gap:25px;align-items:flex-start;margin-bottom:22px}
+.procedure-header h1{font-size:clamp(29px,3.5vw,45px);letter-spacing:-1.1px;margin:8px 0}
+.procedure-header p{font-size:14px;line-height:1.65;max-width:800px;color:#638091}
+.procedure-header a{font-size:12px;color:#087e88;font-weight:700}
+.procedure-input,.procedure-insight,.procedure-matches,.procedure-questions,.procedure-apply{background:#fff;border:1px solid #dfebee;border-radius:14px;padding:24px;margin:20px 0}
+.procedure-input h2,.procedure-insight h2,.procedure-matches h2,.procedure-questions h2,.procedure-apply h2{font-size:19px;margin:0 0 10px}
+.procedure-input p,.procedure-insight p,.procedure-questions p,.procedure-apply p{font-size:12px;color:#627f8e;line-height:1.65}
+.procedure-input textarea,.procedure-match textarea,.procedure-match input,.procedure-match select,.procedure-question-item textarea{display:block;width:100%;border:1px solid #d2e1e7;border-radius:9px;background:#fbfdfd;padding:13px;color:#163949;font:inherit;font-size:13px}
+.procedure-input textarea{font-size:14px;line-height:1.7;min-height:220px;margin-top:15px}
+.procedure-controls{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-top:15px}
+.procedure-controls span{font-size:12px;color:#7790a0}
+.procedure-consent{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;color:#4d7081;margin-top:13px}
+.procedure-insight{display:flex;gap:25px;justify-content:space-between}
+.procedure-metrics{display:grid;grid-template-columns:auto auto;align-items:center;gap:8px}
+.procedure-metrics strong{font-size:28px}.procedure-metrics small{font-size:11px;color:#7891a1}
+.procedure-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(290px,1fr);gap:18px}
+.procedure-matches,.procedure-questions{margin-top:0}
+.procedure-match{border:1px solid #e1e9ed;background:#fcfdfd;border-radius:11px;padding:19px;margin:14px 0}
+.procedure-match-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.procedure-match-head strong{font-size:16px;margin-right:11px}
+.procedure-match-head label,.procedure-match>label{font-size:12px;font-weight:700;color:#516f7d}
+.procedure-match-head label{display:flex;align-items:center;gap:7px}
+.procedure-confidence{font-size:11px;background:#edf2f5;border-radius:8px;padding:5px 8px;color:#526f7c}
+.procedure-confidence.high{background:#e1f2e8;color:#157250}
+.procedure-confidence.low{background:#fff1e2;color:#a76823}
+.procedure-match blockquote{margin:15px 0;padding:14px 16px;border-left:3px solid #0b858b;background:#eef8f7;font-size:13px;line-height:1.7;white-space:pre-wrap}
+.procedure-match>label{display:block;margin:12px 0}
+.procedure-match>label>textarea,.procedure-match>label>input,.procedure-match>label>select{margin-top:6px}
+.procedure-question,.procedure-existing{font-size:12px;color:#725c3f;background:#fbf7ed;padding:10px;border-radius:8px;line-height:1.6}
+.procedure-question-item{border-bottom:1px solid #e6edf0;padding:15px 0}
+.procedure-question-item label{display:block;font-size:12px;line-height:1.6}
+.procedure-question-item textarea{margin-top:8px;min-height:70px}
+.procedure-apply{display:flex;align-items:center;justify-content:space-between;gap:20px}
+@media(max-width:900px){.procedure-layout{grid-template-columns:1fr}.procedure-header{flex-direction:column}}
+@media(max-width:630px){.procedure-page{padding:18px 13px}.procedure-insight,.procedure-apply,.procedure-controls{flex-direction:column;align-items:flex-start}}
