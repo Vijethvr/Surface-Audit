@@ -210,3 +210,37 @@
 @media(max-width:850px){.pack-header{flex-direction:column}.pack-score{grid-template-columns:repeat(3,minmax(115px,1fr))}}
 @media(max-width:550px){.pack-page{padding:20px 13px}.pack-score{grid-template-columns:repeat(2,minmax(110px,1fr))}.pack-cover{padding:24px 17px}}
 @media print{.pack-page{max-width:none;padding:0}.pack-panel{break-inside:avoid}.pack-cover{border-color:#aaa}.pack-panel table{font-size:10px}.pack-panel table a{display:none}}
+
+/* v3.4 methodology catalog and guided engagement generation */
+.method-page{max-width:1600px;margin:0 auto;padding:34px 32px 74px;color:#163648}
+.method-header{display:flex;justify-content:space-between;gap:22px;align-items:flex-start}
+.method-header h1{font-size:clamp(29px,3.3vw,43px);letter-spacing:-1px;margin:8px 0}
+.method-header p{font-size:14px;color:#688091;max-width:800px}
+.method-nav{display:flex;gap:15px;align-items:center;flex-wrap:wrap}
+.method-nav a{font-size:12px;color:#087e88;font-weight:750}
+.method-tabs{display:flex;gap:4px;margin:24px 0;border-bottom:1px solid #dce6ea}
+.method-tabs button{border:0;border-bottom:3px solid transparent;padding:14px 19px;background:transparent;color:#607b8a;font-weight:750;font-size:13px}
+.method-tabs button.active{color:#087e88;border-bottom-color:#087e88}
+.method-columns{display:grid;grid-template-columns:1fr 1.45fr 1fr;gap:17px;align-items:start}
+.method-panel{background:#fff;border:1px solid #dee9ed;border-radius:14px;padding:22px;min-width:0}
+.method-panel h2{font-size:18px;margin:0 0 9px}.method-panel h3{font-size:14px;margin:21px 0 10px;color:#2a5364}
+.method-panel p,.method-panel small{font-size:12px;color:#677f8e;line-height:1.65;white-space:pre-wrap}
+.method-panel-head{display:flex;gap:12px;align-items:flex-start;justify-content:space-between}
+.method-catalog{display:grid;gap:10px;margin-top:19px}
+.method-card{display:flex;flex-direction:column;gap:7px;text-align:left;border:1px solid #dce8ed;background:#f9fbfc;border-radius:11px;padding:16px;color:#183c4e}
+.method-card.chosen{border:2px solid #087e88;background:#f0faf9;padding:15px}
+.method-card strong{font-size:14px}.method-card small{font-size:11px}
+.method-card span{font-size:12px;line-height:1.5}.method-card b{font-size:11px;color:#087e88}
+.method-module-list details{border:1px solid #e2e9ed;border-radius:8px;margin:9px 0;padding:12px;font-size:12px}
+.method-module-list summary{cursor:pointer}.method-module-list li{margin:9px 0;line-height:1.5}
+.method-work-list p{border-bottom:1px solid #e9eef1;padding:8px 0}
+.method-apply label,.method-custom label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:750;color:#526f7e;margin:15px 0}
+.method-apply input,.method-apply select,.method-custom input,.method-custom textarea{width:100%;border:1px solid #d4e1e6;border-radius:8px;padding:11px;color:#183d51;background:#fbfcfd;font:inherit;font-weight:400}
+.method-apply .primary,.method-custom .primary{width:100%;margin:12px 0}
+.method-success{border:1px solid #c9e6dc;border-radius:10px;background:#f2faf7;padding:15px;margin-top:14px}
+.method-success a{display:block;color:#087e88;margin:9px 0;font-weight:750;font-size:12px}
+.method-small{font-size:11px!important}
+.method-custom{max-width:1100px}.method-custom-fields{display:grid;grid-template-columns:2fr 1fr 2fr;gap:14px}
+.method-custom textarea{font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;min-height:380px}
+@media(max-width:1250px){.method-columns{grid-template-columns:1fr 1.25fr}.method-apply{grid-column:1/-1}.method-apply label{display:inline-flex;vertical-align:top;width:calc(50% - 10px);margin-right:8px}}
+@media(max-width:730px){.method-page{padding:20px 14px}.method-header{flex-direction:column}.method-columns,.method-custom-fields{grid-template-columns:1fr}.method-apply{grid-column:auto}.method-apply label{display:flex;width:100%}}
