@@ -636,12 +636,12 @@ try {
   const packageCsv=await fetch(base+packPath+"?format=csv",{headers:{Cookie:sessionCookie}});
   assert.equal(packageCsv.status,200);
   assert.ok((packageCsv.headers.get("content-type")??"").includes("text/csv"));
-  const csvBytes=Buffer.from(await packageCsv.arrayBuffer());
-  assert.deepEqual([...csvBytes.subarray(0,3)],[0xef,0xbb,0xbf]);
-  assert.ok(csvBytes.toString("utf8").includes("MILESTONE"));
-  assert.ok(csvBytes.toString("utf8").includes("DELIVERABLE"));
-  assert.ok(csvBytes.toString("utf8").includes("CAPA"));
-  assert.ok(csvBytes.toString("utf8").includes("EVIDENCE"));
+  const projectPackCsvBytes=Buffer.from(await packageCsv.arrayBuffer());
+  assert.deepEqual([...projectPackCsvBytes.subarray(0,3)],[0xef,0xbb,0xbf]);
+  assert.ok(projectPackCsvBytes.toString("utf8").includes("MILESTONE"));
+  assert.ok(projectPackCsvBytes.toString("utf8").includes("DELIVERABLE"));
+  assert.ok(projectPackCsvBytes.toString("utf8").includes("CAPA"));
+  assert.ok(projectPackCsvBytes.toString("utf8").includes("EVIDENCE"));
   const lifecycleHistory=await request(lifecyclePath);
   assert.equal(lifecycleHistory.body.plan.stage,"CLOSED");
   assert.equal(lifecycleHistory.body.history[0].action,"PLAN_CLOSED");
