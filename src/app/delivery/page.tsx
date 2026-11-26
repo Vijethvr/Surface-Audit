@@ -11,6 +11,7 @@ const label=(s:string)=>s.replaceAll("_"," ").toLowerCase().replace(/^./,c=>c.to
 export default function DeliveryPage(){
  const [client,setClient]=useState("");const [owner,setOwner]=useState("");const [kind,setKind]=useState("");
  const [range,setRange]=useState("ALL");const [search,setSearch]=useState("");
+ const [mayEdit,setMayEdit]=useState(false);const [editing,setEditing]=useState("");const [draftDate,setDraftDate]=useState("");const [saving,setSaving]=useState(false);
  const [data,setData]=useState<Data|null>(null);const [busy,setBusy]=useState(false);const [error,setError]=useState("");
  const query=useMemo(()=>{const p=new URLSearchParams();if(client)p.set("client",client);if(owner)p.set("owner",owner);if(kind)p.set("kind",kind);
   if(range!=="ALL")p.set("range",range);return p.toString()},[client,owner,kind,range]);
@@ -19,6 +20,8 @@ export default function DeliveryPage(){
   if(!r.ok)throw Error(body.error||"Delivery board unavailable");setData(body);
  }catch(e){setError(e instanceof Error?e.message:"Unable to load delivery board")}finally{setBusy(false)}},[query]);
  useEffect(()=>{void load()},[load]);
+ useEffect(()=>{void fetch("/api/auth/session",{cache:"no-store"}).then(r=>r.json()).then(s=>setMayEdit(s.role==="ADMIN"||s.role==="EDITOR")).catch(()=>setMayEdit(false))},[]);
+ const saveDate=async(item:Item)=>{setSaving(true);setError("");try{const response=await fetch("/api/delivery/schedule",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({kind:item.kind,id:item.id.split(":")[1],date:draftDate||null})});const result=await response.json();if(!response.ok)throw Error(result.error||"Unable to change date");setEditing("");await load()}catch(e){setError(e instanceof Error?e.message:"Unable to reschedule")}finally{setSaving(false)}};
  const rows=useMemo(()=>data?.items.filter(item=>[item.title,item.client,item.owner,item.auditTitle,item.project].some(v=>v.toLowerCase().includes(search.toLowerCase())))??[],[data,search]);
  const maxWeek=Math.max(1,...(data?.timeline.map(w=>w.due)??[]));
  const calendarQuery=query?query+"&format=ics":"format=ics";
@@ -58,8 +61,9 @@ export default function DeliveryPage(){
     <button type="button" className="secondary" onClick={()=>{setClient("");setOwner("");setKind("");setRange("ALL");setSearch("")}}>Clear filters</button></div>
     <div className="ops-table-wrap"><table><thead><tr><th>Commitment / audit</th><th>Client</th><th>Owner</th><th>Due</th><th>State</th><th>Open</th></tr></thead>
      <tbody>{rows.map(item=><tr key={item.id}><td><strong>{item.title}</strong><small>{item.kind==="ACTION"?"Corrective action":"Audit target"} · {item.auditTitle}</small></td>
-      <td>{item.client}{item.project&&<small>{item.project}</small>}</td><td>{item.owner||"—"}</td><td>{displayDate(item.date)}
-      {item.daysFromToday!==null&&item.daysFromToday<0&&<small className="delivery-late">{Math.abs(item.daysFromToday)} days overdue</small>}</td>
+      <td>{item.client}{item.project&&<small>{item.project}</small>}</td><td>{item.owner||"—"}</td><td>{editing===item.id?<div className="delivery-date-editor"><input type="date" aria-label={"New deadline for "+item.title} value={draftDate} onChange={e=>setDraftDate(e.target.value)}/><button type="button" disabled={saving} onClick={()=>void saveDate(item)}>Save</button><button type="button" onClick={()=>setEditing("")}>Cancel</button></div>:<>{displayDate(item.date)}
+      {item.daysFromToday!==null&&item.daysFromToday<0&&<small className="delivery-late">{Math.abs(item.daysFromToday)} days overdue</small>}
+      {mayEdit&&<button className="delivery-date-change" type="button" onClick={()=>{setEditing(item.id);setDraftDate(item.date??"")}}>Change date</button>}</>}</td>
       <td>{label(item.status)}{item.severity&&<small>{label(item.severity)} severity</small>}</td>
       <td><Link href={"/?audit="+encodeURIComponent(item.auditId)}>Open audit</Link></td></tr>)}</tbody></table></div>
     {rows.length===0&&<p>No commitments match these filters.</p>}
