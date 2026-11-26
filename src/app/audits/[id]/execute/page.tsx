@@ -71,7 +71,7 @@ export default function GuidedExecution({params}:{params:Promise<{id:string}>}){
   <header className="guided-header"><div><Link href={"/?audit="+encodeURIComponent(auditId)} className="management-return">Back to audit workspace</Link>
    <p className="eyebrow">METHOD-LED ASSURANCE · GUIDED EXECUTION</p><h1>{data?.audit.title??"Guided audit execution"}</h1>
    <p>{data?.audit.client??"Client"} · {data?.audit.template.title??"Audit"} · revision {data?.audit.template.revision??"—"}</p></div>
-   <div className="guided-actions no-print"><Link href={"/audits/"+encodeURIComponent(auditId)+"/procedure"}>Describe procedure · Intelligent mapping</Link><Link href={"/reports/"+encodeURIComponent(auditId)}>Open assessment report</Link>
+   <div className="guided-actions no-print"><Link href={"/audits/"+encodeURIComponent(auditId)+"/copilot"}>Talk through your procedure · Audit copilot</Link><Link href={"/audits/"+encodeURIComponent(auditId)+"/procedure"}>Direct procedure mapping</Link><Link href={"/reports/"+encodeURIComponent(auditId)}>Open assessment report</Link>
     <button type="button" className="secondary" onClick={()=>void load()} disabled={busy}>Refresh from database</button></div>
   </header>
   <div className="storage-banner">Local-development assessment, not an independent conformity or accreditation decision. Review evidence authenticity and use independent approval before sealing.</div>

@@ -38,6 +38,7 @@ model Audit {
   evidenceAssets EvidenceAsset[]
   reportSnapshot AuditReportSnapshot?
   reviews AuditReview[]
+  dialogue ProcedureDialogue?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -320,4 +321,29 @@ model ConsultingMethodology {
  createdBy String
  createdAt DateTime @default(now())
  updatedAt DateTime @updatedAt
+}
+
+// v3.7: internal narrative dialogue, deliberately separate from approved
+// audit answers. Turns are immutable after capture; no inferred conformity.
+model ProcedureDialogue {
+ id String @id @default(cuid())
+ auditId String @unique
+ audit Audit @relation(fields:[auditId],references:[id],onDelete:Restrict)
+ revision Int @default(0)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ turns ProcedureDialogueTurn[]
+}
+model ProcedureDialogueTurn {
+ id String @id @default(cuid())
+ dialogueId String
+ dialogue ProcedureDialogue @relation(fields:[dialogueId],references:[id],onDelete:Restrict)
+ sequence Int
+ kind String
+ text String
+ requirementCode String?
+ author String
+ createdAt DateTime @default(now())
+ @@unique([dialogueId,sequence])
+ @@index([dialogueId,createdAt])
 }
